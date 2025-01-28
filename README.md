@@ -33,7 +33,7 @@ The Discord.js documentation is your new best friend. It's well-written and a br
 
 1. Clone this repo and navigate into the directory:  
    ```bash  
-   git clone <your-repo-link>  
+   git clone git@github.com:Sovereign-Greed/discord-joke-bot.git 
    cd discord-joke-bot  
    ```
 2. Install the dependencies:
