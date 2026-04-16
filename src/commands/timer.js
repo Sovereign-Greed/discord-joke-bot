@@ -1,5 +1,6 @@
-import { ChannelType, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import { ChannelType, SlashCommandBuilder } from 'discord.js';
 import { MENTION_NONE, mentionOnlyUsers } from '../constants/safeMentions.js';
+import { isAdminMember } from '../functions/isAdminMember.js';
 import { tryConsumeTimerCooldown } from '../functions/timerCooldown.js';
 
 const MAX_SECONDS = 270;
@@ -41,14 +42,18 @@ export async function execute(interaction) {
 		return;
 	}
 
-	const hasAdminPermission = Boolean(interaction.memberPermissions?.has(PermissionFlagsBits.Administrator));
-	const hasAdminRole = Boolean(interaction.member?.roles?.cache?.some((r) => r.name.toLowerCase() === 'admin'));
-	if (!hasAdminPermission && !hasAdminRole) {
+	if (!isAdminMember(interaction)) {
 		await interaction.reply({
 			content: 'Restricted: only admins can use `/timer`.',
 			ephemeral: true,
 			allowedMentions: MENTION_NONE,
 		});
+		return;
+	}
+
+	const channel = interaction.channel;
+	if (!channel || !channel.isTextBased()) {
+		await interaction.reply({ content: 'I can’t post timer pings in this channel type.', ephemeral: true, allowedMentions: MENTION_NONE });
 		return;
 	}
 
@@ -60,12 +65,6 @@ export async function execute(interaction) {
 			ephemeral: true,
 			allowedMentions: MENTION_NONE,
 		});
-		return;
-	}
-
-	const channel = interaction.channel;
-	if (!channel || !channel.isTextBased()) {
-		await interaction.reply({ content: 'I can’t post timer pings in this channel type.', ephemeral: true, allowedMentions: MENTION_NONE });
 		return;
 	}
 

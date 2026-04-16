@@ -17,3 +17,15 @@ export function mentionOnlyUsers(...userIds) {
 		repliedUser: false,
 	});
 }
+
+/**
+ * @param {...string} roleIds
+ */
+export function mentionOnlyRoles(...roleIds) {
+	return Object.freeze({
+		parse: [],
+		users: [],
+		roles: [...roleIds],
+		repliedUser: false,
+	});
+}
