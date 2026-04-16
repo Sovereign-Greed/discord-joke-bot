@@ -16,7 +16,7 @@ export async function execute(interaction) {
 	const textTriggers = TEXT_TRIGGERS.map((t) => t.match);
 
 	const sections = [
-		'**Slash (anyone):** `/cat` · `/joke`',
+		'**Slash (anyone):** `/cat` · `/joke` · `/roll` · `/spell` · `/monster`',
 		`**Hello**: exact \`${HELLO_TRIGGER}\``,
 		`**Greeting joke-bot**: ${formatInline(DIRECTED_GREETING_PREFIXES)} + (mention or “joke bot”)`,
 		`**Name intro**: ${formatInline(NAME_INTRO_TRIGGERS)} + a name`,

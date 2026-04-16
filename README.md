@@ -17,7 +17,7 @@ A small [discord.js](https://discord.js.org) bot for humor, keyword replies, cat
 | `src/commands/` | Slash command definitions (`data` + `execute`). |
 | `src/events/` | Discord client events (`ready`, `messageCreate`, `interactionCreate`). |
 | `src/handlers/` | Non-slash message pipeline (e.g. keyword replies). |
-| `src/api/` | HTTP client + outbound API calls (axios, timeouts). |
+| `src/api/` | HTTP client + outbound API calls (axios, timeouts), including [D&D 5e API](https://www.dnd5eapi.co/) helpers. |
 | `src/services/` | Reusable domain logic (dice, text matching, cooldowns). |
 | `src/guards/` | Permission / “is this message for the bot?” checks. |
 | `src/middleware/` | Cross-cutting slash-command helpers (e.g. centralized error replies). |
@@ -107,6 +107,8 @@ If slash commands never appear in a guild, generate a **new** invite with **`app
 | `/cat` | Everyone | Random cat image (Cat API). |
 | `/joke` | Everyone | Random one-liner (JokeAPI). |
 | `/roll` | Everyone | Roll dice with optional modifier and adv/dis for **d20**. |
+| `/spell` | Everyone | SRD spell lookup ([dnd5eapi.co](https://www.dnd5eapi.co/)) — compact embed + links. |
+| `/monster` | Everyone | SRD monster lookup — compact embed + links. |
 | `/timer` | **Admin** (Administrator permission **or** role named `Admin`) | Starts a timer and pings one user when it ends (per-channel cooldowns apply). |
 | `/check-dnd-availability` | **Admin** (same as above) | Posts an embed + **✅ / ❌** reaction “poll” and pings the **`Players`** role only. |
 
