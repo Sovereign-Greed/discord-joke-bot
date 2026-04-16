@@ -1,11 +1,11 @@
 import { NAME_INTRO_TRIGGERS } from '../constants/triggers.js';
-import { BASIC_REPLIES, BASIC_TRIGGER_KEYS } from '../constants/replies.js';
 import {
 	HELLO_TRIGGER,
 	HELLO_REPLY,
 	CAT_KEYWORD,
 	JOKE_REQUEST_PHRASE,
 } from '../constants/phrases.js';
+import { matchTextTriggerReply } from './matchTextTrigger.js';
 import { fetchCatImageSearch } from './fetchCatImage.js';
 import { fetchRandomSingleJoke } from './fetchJoke.js';
 
@@ -17,35 +17,31 @@ export async function handleMessageCreate(message) {
 		return;
 	}
 
-	if (message.content.toLowerCase() === HELLO_TRIGGER) {
+	const raw = message.content;
+	const normalized = raw.toLowerCase();
+
+	if (normalized === HELLO_TRIGGER) {
 		await message.channel.send(HELLO_REPLY);
 		return;
 	}
 
-	const messageL = message.content.toLowerCase();
-
-	const nameIntroMatch = NAME_INTRO_TRIGGERS.find((t) => messageL.includes(`${t} `));
-	const basicMatch = BASIC_TRIGGER_KEYS.find((bt) => messageL.includes(bt));
-	const catMatch = messageL.includes(CAT_KEYWORD);
-	const jokeRequest = messageL.includes(JOKE_REQUEST_PHRASE);
-
+	// Name intros before keyword replies so "im jade" stays a dad-joke name bit, not Jade's line.
+	const nameIntroMatch = NAME_INTRO_TRIGGERS.find((t) => normalized.includes(`${t} `));
 	if (nameIntroMatch) {
-		const name = message.content.slice(nameIntroMatch.length).trim();
+		const name = raw.slice(nameIntroMatch.length).trim();
 		if (name) {
 			await message.channel.send(`Hello ${name}, I'm joke-bot!`);
 		}
 		return;
 	}
 
-	if (basicMatch) {
-		const response = BASIC_REPLIES[basicMatch];
-		if (response) {
-			await message.channel.send(response);
-		}
+	const textReply = matchTextTriggerReply(normalized);
+	if (textReply) {
+		await message.channel.send(textReply);
 		return;
 	}
 
-	if (catMatch) {
+	if (normalized.includes(CAT_KEYWORD)) {
 		const res = await fetchCatImageSearch();
 		const pic = res.data[0]?.url;
 		if (res.status === 200 && pic) {
@@ -54,7 +50,7 @@ export async function handleMessageCreate(message) {
 		return;
 	}
 
-	if (jokeRequest) {
+	if (normalized.includes(JOKE_REQUEST_PHRASE)) {
 		const res = await fetchRandomSingleJoke();
 		const joke = res.data?.joke;
 		if (joke) {
