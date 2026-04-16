@@ -1,63 +1,152 @@
-# 🤖 Discord Joke Bot  
+# Discord Joke Bot
 
-Welcome to **Discord Joke Bot**, the bot nobody asked for but everyone needed! 🎉  
-
-This is a fun side project I started to spice up my friends' Discord server with some good ol’ humor, banter, and random hilarity. Whether you're into dad jokes, meme references, or want to see some adorable cat pictures, Joke Bot's got you covered!  
+A small [discord.js](https://discord.js.org) bot for humor, keyword replies, cats, jokes, and a few admin-only utilities (timers, D&D availability polls).
 
 ---
 
-## ✨ Features  
+## Features
 
-### 🔑 Trigger-based Replies  
-It’s simple: you say something, and the bot replies with a preloaded zinger! For example:  
-- **apples**: "Well I got her number, how\'d you like them apples"
-
-Trigger keys = fun. Values = epic comebacks. It's the circle of Discord life.  
-
-### 🐱 Meow-velous Cats 
-Check out [**The Cat API**](https://thecatapi.com/) that I used.
-
-### 🃏 Jokes Galore 
-Check out the [**The Joke API**](https://v2.jokeapi.dev/) that I used.
+- **Slash commands** — help, jokes, cats, timers, D&D availability polls, and a list of text triggers.
+- **Message triggers** — keyword replies, directed greetings, name gags, and optional insult clapbacks (with safeguards).
+- **External APIs** — [The Cat API](https://thecatapi.com/) and [JokeAPI](https://v2.jokeapi.dev/).
 
 ---
 
-## 📚 Documentation  
-Want to make your own bot or just check out the magic behind the madness?  
-The Discord.js documentation is your new best friend. It's well-written and a breeze to follow:  
-[**Discord.js Docs**](https://discord.js.org)  
+## Prerequisites
+
+- **Node.js** (v18+ recommended; v22 works well).
+- A **Discord application** with a bot user: [Discord Developer Portal](https://discord.com/developers/applications).
 
 ---
 
-## 🚀 Quick Start  
+## Quick start
 
-1. Clone this repo and navigate into the directory:  
-   ```bash  
-   git clone git@github.com:Sovereign-Greed/discord-joke-bot.git 
-   cd discord-joke-bot  
-   ```
-2. Install the dependencies:
+1. **Clone and install**
+
    ```bash
+   git clone git@github.com:Sovereign-Greed/discord-joke-bot.git
+   cd discord-joke-bot
    npm install
    ```
-3. Create your local `.env` (copy from the template):
+
+2. **Environment**
+
    ```bash
    npm run env:init
    ```
-   Then edit `.env` and set **BOT_TOKEN**, **APPLICATION_ID**, and **PUBLIC_KEY** from the [Discord Developer Portal](https://discord.com/developers/applications) → your app → **General Information**.
-4. Confirm variables are present and shaped correctly:
+
+   Edit `.env` and set:
+
+   | Variable | Where to find it |
+   |----------|------------------|
+   | `BOT_TOKEN` | Portal → **Bot** → reset/copy token (keep secret). |
+   | `APPLICATION_ID` | Portal → **General Information** → Application ID (same snowflake as the bot user). |
+   | `PUBLIC_KEY` | Portal → **General Information** → Public Key (64 hex chars). |
+
+   Validate:
+
    ```bash
    npm run check-env
    ```
-5. Start the bot (`prestart` runs `check-env` automatically):
+
+3. **Register slash commands** (required for `/help`, `/cat`, etc.)
+
+   ```bash
+   npm run deploy-commands
+   ```
+
+   You should see a line like: `Registered N global application (/) command(s).`  
+   **Global commands** can take **up to about an hour** to show in every server; they often appear quickly in **DMs with the bot** or after a short wait in a guild.
+
+4. **Run the bot**
+
    ```bash
    npm start
-   ```  
+   ```
 
-## 🤝 Contributing  
-Pull requests are welcome! Feel free to contribute by adding new triggers, enhancing APIs, or even optimizing the jokes.  
+   For local development (restart on save):
+
+   ```bash
+   npm run dev
+   ```
 
 ---
 
-## 📜 License  
+## Invite the bot to your server
+
+In the Developer Portal, use **OAuth2 → URL Generator**:
+
+- **Scopes:** `bot`, `applications.commands`
+- **Bot permissions** (minimum starting point): View channels, Send messages, Embed links, Read message history, Add reactions, Mention everyone (not required for this bot’s safe defaults), Use slash commands.
+
+Open the generated URL, pick your server, and authorize.
+
+If slash commands never appear in a guild, generate a **new** invite with **`applications.commands`** checked and add the bot again so that scope is granted.
+
+---
+
+## Slash commands
+
+| Command | Who can use it | What it does |
+|---------|----------------|--------------|
+| `/help` | Everyone | Lists registered slash commands. |
+| `/list-triggers` | Everyone (ephemeral) | Summarizes **message** triggers and points at `/cat` / `/joke`. |
+| `/cat` | Everyone | Random cat image (Cat API). |
+| `/joke` | Everyone | Random one-liner (JokeAPI). |
+| `/timer` | **Admin** (Administrator permission **or** role named `Admin`) | Starts a timer and pings one user when it ends (per-channel cooldowns apply). |
+| `/check-dnd-availability` | **Admin** (same as above) | Posts an embed + **✅ / ❌** reaction “poll” and pings the **`Players`** role only. |
+
+**D&D poll note:** The server must have a role named **`Players`** (case-insensitive match). Create or rename a role to match, or change `PLAYERS_ROLE_NAME` in `src/constants/roles.js` to match your server.
+
+---
+
+## Message triggers (no slash)
+
+Users can still trigger replies by typing in chat (exact phrases, keywords, etc.). For an up-to-date list, run **`/list-triggers`** in Discord.
+
+To edit behavior, see **Personalization** below.
+
+---
+
+## Personalization for your server
+
+These are the main places to customize without rewriting the whole bot:
+
+1. **Keyword replies and meme lines** — `src/constants/replies.js`  
+   Add or change `{ match, reply }` entries. Single-word matches use **whole-word** matching; phrases with spaces use substring rules (see code comments).
+
+2. **Name-intro prefixes** (`im` / `i’m` / `i am`) — `src/constants/triggers.js`
+
+3. **Greeting words** (hi / hey / hello to the bot) — `src/constants/phrases.js`
+
+4. **Directed insult replies** — `src/constants/botInsults.js` (word lists and witty lines).
+
+5. **Role names used by commands** — `src/constants/roles.js`  
+   - Default **Admin** gate for `/timer` and `/check-dnd-availability` (also accepts **Administrator** permission).  
+   - Default **`Players`** role for D&D pings. Align these names with your server or change the constants.
+
+6. **Limits** (timeouts, cooldowns) — `src/constants/limits.js`
+
+7. **Server integration UI** — In Discord: **Server Settings → Integrations → your bot** to tweak which roles can use which slash commands in that server (overrides are per-guild).
+
+8. **Fork-only ideas** — Swap API URLs in `src/constants/api.js`, adjust embed colors in command files, or add new slash commands under `src/commands/` and register them in `src/commands/index.js`, then run **`npm run deploy-commands`** again.
+
+---
+
+## Troubleshooting
+
+- **`npm run deploy-commands` fails** — Check `BOT_TOKEN` and `APPLICATION_ID` belong to the **same** application.  
+- **Slash commands missing in a server** — Wait for global propagation, try a DM with the bot first, confirm the invite includes `applications.commands`, restart the Discord client once.  
+- **Bot “does nothing” on messages** — Ensure **Message Content Intent** is enabled in the Portal if you rely on non-slash triggers (the bot reads message text for those).
+
+---
+
+## Contributing
+
+Pull requests are welcome: new triggers, commands, or API improvements.
+
+---
+
+## License
+
 This project is licensed under the [ISC License](LICENSE).
