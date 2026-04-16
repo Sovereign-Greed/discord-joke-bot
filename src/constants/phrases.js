@@ -8,6 +8,3 @@ export const DIRECTED_GREETING_PREFIXES = Object.freeze([
 	'yo',
 	'sup',
 ]);
-
-export const CAT_KEYWORD = 'cat';
-export const JOKE_REQUEST_PHRASE = 'give me a joke';

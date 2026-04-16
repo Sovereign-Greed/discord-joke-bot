@@ -1,7 +1,7 @@
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { MENTION_NONE } from '../constants/safeMentions.js';
 import { NAME_INTRO_TRIGGERS } from '../constants/triggers.js';
-import { DIRECTED_GREETING_PREFIXES, HELLO_TRIGGER, JOKE_REQUEST_PHRASE, CAT_KEYWORD } from '../constants/phrases.js';
+import { DIRECTED_GREETING_PREFIXES, HELLO_TRIGGER } from '../constants/phrases.js';
 import { TEXT_TRIGGERS } from '../constants/replies.js';
 
 export const data = new SlashCommandBuilder()
@@ -16,11 +16,10 @@ export async function execute(interaction) {
 	const textTriggers = TEXT_TRIGGERS.map((t) => t.match);
 
 	const sections = [
+		'**Slash (anyone):** `/cat` · `/joke`',
 		`**Hello**: exact \`${HELLO_TRIGGER}\``,
 		`**Greeting joke-bot**: ${formatInline(DIRECTED_GREETING_PREFIXES)} + (mention or “joke bot”)`,
 		`**Name intro**: ${formatInline(NAME_INTRO_TRIGGERS)} + a name`,
-		`**Joke**: phrase \`${JOKE_REQUEST_PHRASE}\` (bounded segment)`,
-		`**Cat**: whole word \`${CAT_KEYWORD}\``,
 		`**Keyword replies**: ${textTriggers.length} triggers (single words: whole-word; phrases: substring)`,
 	];
 
@@ -36,4 +35,3 @@ export async function execute(interaction) {
 
 	await interaction.reply({ embeds: [embed], ephemeral: true, allowedMentions: MENTION_NONE });
 }
-

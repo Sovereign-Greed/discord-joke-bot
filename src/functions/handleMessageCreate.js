@@ -2,17 +2,12 @@ import {
 	HELLO_TRIGGER,
 	HELLO_REPLY,
 	DIRECTED_GREETING_PREFIXES,
-	CAT_KEYWORD,
-	JOKE_REQUEST_PHRASE,
 } from '../constants/phrases.js';
 import { MENTION_NONE } from '../constants/safeMentions.js';
 import { isDirectedAtBot } from './isDirectedAtBot.js';
 import { pickDirectedBotInsultReply } from './pickDirectedBotInsultReply.js';
 import { matchTextTriggerReply } from './matchTextTrigger.js';
 import { parseNameIntro } from './parseNameIntro.js';
-import { hasPhraseSegment, hasWholeWord } from './textMatch.js';
-import { fetchCatImageSearch } from './fetchCatImage.js';
-import { fetchRandomSingleJoke } from './fetchJoke.js';
 
 const sendOpts = { allowedMentions: MENTION_NONE };
 
@@ -56,36 +51,5 @@ export async function handleMessageCreate(message) {
 	const textReply = matchTextTriggerReply(normalized);
 	if (textReply) {
 		await message.channel.send({ content: textReply, ...sendOpts });
-		return;
-	}
-
-	if (hasWholeWord(normalized, CAT_KEYWORD)) {
-		try {
-			const res = await fetchCatImageSearch();
-			const pic = res.data[0]?.url;
-			if (res.status === 200 && pic) {
-				await message.channel.send({ content: pic, ...sendOpts });
-			}
-		}
-		catch {
-			await message.channel.send({ content: 'Couldn\'t reach the cat API. Try again in a bit.', ...sendOpts });
-		}
-		return;
-	}
-
-	if (hasPhraseSegment(normalized, JOKE_REQUEST_PHRASE)) {
-		try {
-			const res = await fetchRandomSingleJoke();
-			const joke = res.data?.joke;
-			if (joke) {
-				console.log({ joke });
-			}
-			if (res.status === 200 && joke) {
-				await message.channel.send({ content: joke, ...sendOpts });
-			}
-		}
-		catch {
-			await message.channel.send({ content: 'Couldn\'t reach the joke API. Try again in a bit.', ...sendOpts });
-		}
 	}
 }
