@@ -73,3 +73,13 @@ export function printEnvStatus() {
 
 	return ok;
 }
+
+/**
+ * Optional display name for `/roll` natural-1 jokes (your friend who rolls badly).
+ * Empty or unset disables those lines entirely.
+ * @returns {string}
+ */
+export function getBadRollerName() {
+	const n = process.env.BAD_ROLLER_NAME?.trim();
+	return n ?? '';
+}
