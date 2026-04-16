@@ -1,4 +1,5 @@
-import { BOT_ALIAS_SUBSTRINGS, INSULT_SUBSTRINGS, INSULT_WITTY_REPLIES } from '../constants/botInsults.js';
+import { INSULT_SUBSTRINGS, INSULT_WITTY_REPLIES } from '../constants/botInsults.js';
+import { isDirectedAtBot } from './isDirectedAtBot.js';
 
 /**
  * @param {import('discord.js').Message} message
@@ -6,10 +7,7 @@ import { BOT_ALIAS_SUBSTRINGS, INSULT_SUBSTRINGS, INSULT_WITTY_REPLIES } from '.
  * @returns {string | null}
  */
 export function pickDirectedBotInsultReply(message, normalized) {
-	const botId = message.client.user?.id;
-	const mentioned = Boolean(botId && message.mentions.users.has(botId));
-	const byName = BOT_ALIAS_SUBSTRINGS.some((a) => normalized.includes(a));
-	if (!mentioned && !byName) {
+	if (!isDirectedAtBot(message, normalized)) {
 		return null;
 	}
 

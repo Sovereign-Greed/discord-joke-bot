@@ -1,10 +1,11 @@
 import * as help from './help.js';
+import * as listTriggers from './listTriggers.js';
 import * as timer from './timer.js';
 
 /** @typedef {{ data: import('discord.js').SlashCommandBuilder, execute: (interaction: import('discord.js').ChatInputCommandInteraction) => Promise<void> }} SlashCommandModule */
 
 /** @type {SlashCommandModule[]} */
-const modules = [help, timer];
+const modules = [help, listTriggers, timer];
 
 const byName = new Map(modules.map((m) => [m.data.name, m]));
 

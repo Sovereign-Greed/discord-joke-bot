@@ -1,12 +1,14 @@
-import { NAME_INTRO_TRIGGERS } from '../constants/triggers.js';
 import {
 	HELLO_TRIGGER,
 	HELLO_REPLY,
+	DIRECTED_GREETING_PREFIXES,
 	CAT_KEYWORD,
 	JOKE_REQUEST_PHRASE,
 } from '../constants/phrases.js';
+import { isDirectedAtBot } from './isDirectedAtBot.js';
 import { pickDirectedBotInsultReply } from './pickDirectedBotInsultReply.js';
 import { matchTextTriggerReply } from './matchTextTrigger.js';
+import { parseNameIntro } from './parseNameIntro.js';
 import { fetchCatImageSearch } from './fetchCatImage.js';
 import { fetchRandomSingleJoke } from './fetchJoke.js';
 
@@ -26,13 +28,18 @@ export async function handleMessageCreate(message) {
 		return;
 	}
 
+	// "Hi joke-bot" style greetings (directed-only).
+	const trimmed = normalized.trim();
+	const isGreeting = DIRECTED_GREETING_PREFIXES.some((g) => trimmed === g || trimmed.startsWith(`${g} `));
+	if (isGreeting && isDirectedAtBot(message, normalized)) {
+		await message.channel.send('hi. i’m here. unfortunately for everyone.');
+		return;
+	}
+
 	// Name intros before keyword replies so "im jade" stays a dad-joke name bit, not Jade's line.
-	const nameIntroMatch = NAME_INTRO_TRIGGERS.find((t) => normalized.includes(`${t} `));
-	if (nameIntroMatch) {
-		const name = raw.slice(nameIntroMatch.length).trim();
-		if (name) {
-			await message.channel.send(`Hello ${name}, I'm joke-bot!`);
-		}
+	const introName = parseNameIntro(raw);
+	if (introName) {
+		await message.channel.send(`Hello ${introName}, I'm joke-bot!`);
 		return;
 	}
 
