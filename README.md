@@ -157,6 +157,117 @@ These are the main places to customize without rewriting the whole bot:
 
 ---
 
+## Deploy on Fly.io
+
+This repo includes a **`Dockerfile`** and **`fly.toml`** for [Fly Machines](https://fly.io/docs/machines/). The bot is a **long-running process** (no HTTP server); Fly runs `npm start`, which runs `prestart` (`check-env`) then `node src/index.js`.
+
+**Fly CLI cheat sheet** (start/stop machines, secrets, logs): **[docs/fly.md](docs/fly.md)**.
+
+**GitHub Actions CI/CD** (lint + deploy to Fly on `master`): **[docs/github-cicd.md](docs/github-cicd.md)** — set the **`FLY_API_TOKEN`** secret and configure branch protection so merges match your policy.
+
+### Prereqs
+
+- Install the [Fly CLI](https://fly.io/docs/hands-on/install-flyctl/) (`flyctl`).
+- Have Docker available locally if you want to build/test images before deploying.
+
+### Local checks before deploy
+
+```bash
+npm run build               # ESLint (same as `verify`)
+npm run build:docker        # Docker image only
+npm run build:all             # lint + Docker image (same idea as `verify:docker`)
+npm run verify               # ESLint only (CI-friendly)
+npm run verify:docker        # lint + `docker build` (matches Fly’s Docker build)
+npm run build:babel          # optional: transpile `src/` → `build/` (not used by `npm start`)
+```
+
+Optional smoke test (does **not** connect to Discord until env is valid):
+
+```bash
+docker run --rm ^
+  -e BOT_TOKEN=your_token ^
+  -e APPLICATION_ID=your_app_id ^
+  -e PUBLIC_KEY=your_public_key ^
+  discord-joke-bot:local
+```
+
+(Use `\` line continuations on macOS/Linux instead of `^`.)
+
+### First-time Fly setup
+
+1. Log in: `fly auth login`
+2. From the repo root, create the app (pick a unique name if `discord-joke-bot` is taken):
+
+   ```bash
+   fly launch --no-deploy
+   ```
+
+   Align `app` in `fly.toml` with the name Fly created, or edit `fly.toml` after launch.
+
+3. Set secrets (same values as `.env`; no file is uploaded):
+
+   ```bash
+   fly secrets set BOT_TOKEN="..." APPLICATION_ID="..." PUBLIC_KEY="..."
+   ```
+
+   Optional:
+
+   ```bash
+   fly secrets set BAD_ROLLER_NAME="Kimo"
+   ```
+
+4. Deploy:
+
+   ```bash
+   fly deploy
+   ```
+
+`fly.toml` includes a **`release_command`** that runs `node scripts/deploy-commands.js` so global slash commands stay registered on each deploy. Remove the `[deploy]` block in `fly.toml` if you prefer registering commands only from your laptop (`npm run deploy-commands`).
+
+### Scale to exactly one Machine (recommended)
+
+This bot does not need horizontal scaling. After the app exists, pin **one** Machine and cap **one per region**:
+
+```bash
+npm run fly:scale-one
+fly scale show
+```
+
+That maps to `fly scale count 1 --max-per-region 1`. Fly does **not** auto-scale this app unless you separately add an autoscaler or scale commands yourself—staying at **count 1** keeps cost predictable.
+
+`[[vm]]` in `fly.toml` is already the **smallest** shared CPU + **256 MB** RAM Fly enforces from the file (good for a Discord gateway bot).
+
+### Understanding `fly logs` (release vs main bot)
+
+On deploy you will often see **two different Machines** in the log stream:
+
+1. **Release Machine** — Fly runs **`release_command`** (`node scripts/deploy-commands.js`) in a **short-lived** Machine. It prints `Registered N global application…`, exits with code **0**, and shuts down. **This is normal.** It is **not** your main bot “restarting.”
+2. **App Machine** — A separate long-running Machine runs **`CMD`** (`npm start` → Discord client). That is the bot.
+
+So: the app is **not** failing because `deploy-commands` finished; that job is **supposed** to exit. If you want **one fewer** Fly Machine per deploy, remove the `[deploy]` block and run `npm run deploy-commands` locally when slash commands change.
+
+**Trial time limit:** Logs like `Trial machine stopping… To run for longer than 5m0s, add a credit card` come from Fly’s **trial/account** rules, not from this repo. A 24/7 bot usually needs a **paid** (or card-backed) Fly plan—check [Fly pricing](https://fly.io/docs/about/pricing/) for current free allowances.
+
+**Practical ways to limit spend**
+
+- Keep **one** Machine (`npm run fly:scale-one`) and **one** region in `fly.toml` (`primary_region`).
+- Avoid extra Machines: don’t run `fly machine clone` / scale up unless you mean to.
+- Optional: drop **`release_command`** so each deploy doesn’t spin a second Machine for `deploy-commands` (register commands from CI or your PC instead).
+- Watch usage: `fly dashboard` / billing email alerts if Fly offers them.
+- This bot has **no public HTTP** in `fly.toml`, so Fly Proxy **autostop/autostart** for idle web apps does not apply the same way as for an HTTP service—billing is mostly “Machine running × size × time.”
+
+### After deploy
+
+- Logs: `fly logs`
+- SSH (debug): `fly ssh console`
+- Status: `fly status`
+
+### CI
+
+GitHub Actions runs `npm run lint:check` on pushes/PRs to `main`/`master` (see `.github/workflows/ci.yml`).
+
+---
+
 ## Troubleshooting
 
 - **`npm run deploy-commands` fails** — Check `BOT_TOKEN` and `APPLICATION_ID` belong to the **same** application.  

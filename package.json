@@ -6,14 +6,24 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint . --ignore-pattern 'build/' --fix",
+    "lint:check": "eslint . --ignore-pattern 'build/' --max-warnings 0",
     "lint:fix": "eslint . --ignore-pattern 'build/' --fix",
+    "verify": "npm run lint:check",
+    "verify:docker": "npm run lint:check && docker build -t discord-joke-bot:local .",
+    "build": "npm run lint:check",
+    "build:docker": "docker build -t discord-joke-bot:local .",
+    "build:all": "npm run build && npm run build:docker",
+    "build:babel": "babel src -d build",
+    "fly:scale-one": "fly scale count 1 --max-per-region 1",
     "start": "node src/index.js",
     "dev": "nodemon",
     "check-env": "node src/check-env.js",
     "env:init": "node scripts/init-env.js",
     "deploy-commands": "node scripts/deploy-commands.js",
-    "prestart": "node src/check-env.js",
-    "build": "babel src -d build"
+    "prestart": "node src/check-env.js"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "type": "module",
   "keywords": [],

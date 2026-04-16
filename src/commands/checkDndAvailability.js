@@ -1,4 +1,5 @@
 import { ChannelType, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { EPHEMERAL } from '../constants/discordFlags.js';
 import { DND_AVAILABILITY_COOLDOWN_MS } from '../constants/limits.js';
 import { MENTION_NONE, mentionOnlyRoles } from '../constants/safeMentions.js';
 import { PLAYERS_ROLE_NAME } from '../constants/roles.js';
@@ -41,7 +42,7 @@ export const data = new SlashCommandBuilder()
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 export async function execute(interaction) {
-	await interaction.deferReply({ ephemeral: true });
+	await interaction.deferReply({ flags: EPHEMERAL });
 
 	if (!interaction.inGuild() || interaction.channel?.type === ChannelType.DM) {
 		await interaction.editReply({ content: 'Use this command in a server text channel.', allowedMentions: MENTION_NONE });

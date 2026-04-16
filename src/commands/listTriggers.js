@@ -1,4 +1,5 @@
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { EPHEMERAL } from '../constants/discordFlags.js';
 import { MENTION_NONE } from '../constants/safeMentions.js';
 import { NAME_INTRO_TRIGGERS } from '../constants/triggers.js';
 import { DIRECTED_GREETING_PREFIXES, HELLO_TRIGGER } from '../constants/phrases.js';
@@ -33,5 +34,5 @@ export async function execute(interaction) {
 		})
 		.setFooter({ text: 'These are message-based triggers, not slash commands.' });
 
-	await interaction.reply({ embeds: [embed], ephemeral: true, allowedMentions: MENTION_NONE });
+	await interaction.reply({ embeds: [embed], flags: EPHEMERAL, allowedMentions: MENTION_NONE });
 }

@@ -1,4 +1,5 @@
 import { ChannelType, SlashCommandBuilder } from 'discord.js';
+import { EPHEMERAL } from '../constants/discordFlags.js';
 import { MENTION_NONE, mentionOnlyUsers } from '../constants/safeMentions.js';
 import { isAdminMember } from '../guards/admin.js';
 import { tryConsumeTimerCooldown } from '../services/timerCooldown.js';
@@ -45,7 +46,7 @@ export async function execute(interaction) {
 	if (!isAdminMember(interaction)) {
 		await interaction.reply({
 			content: 'Restricted: only admins can use `/timer`.',
-			ephemeral: true,
+			flags: EPHEMERAL,
 			allowedMentions: MENTION_NONE,
 		});
 		return;
@@ -53,7 +54,7 @@ export async function execute(interaction) {
 
 	const channel = interaction.channel;
 	if (!channel || !channel.isTextBased()) {
-		await interaction.reply({ content: 'I can’t post timer pings in this channel type.', ephemeral: true, allowedMentions: MENTION_NONE });
+		await interaction.reply({ content: 'I can’t post timer pings in this channel type.', flags: EPHEMERAL, allowedMentions: MENTION_NONE });
 		return;
 	}
 
@@ -62,7 +63,7 @@ export async function execute(interaction) {
 		const sec = Math.ceil(cooldown.retryAfterMs / 1000);
 		await interaction.reply({
 			content: `Slow down — you can start another timer in **${sec}s**.`,
-			ephemeral: true,
+			flags: EPHEMERAL,
 			allowedMentions: MENTION_NONE,
 		});
 		return;

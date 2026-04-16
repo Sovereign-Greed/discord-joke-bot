@@ -1,4 +1,5 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { EPHEMERAL } from '../constants/discordFlags.js';
 import { MENTION_NONE } from '../constants/safeMentions.js';
 
 export const data = new SlashCommandBuilder()
@@ -13,7 +14,7 @@ export async function execute(interaction) {
 	if (!manager) {
 		await interaction.reply({
 			content: 'Bot application is not ready yet. Try `/help` again in a few seconds.',
-			ephemeral: true,
+			flags: EPHEMERAL,
 			allowedMentions: MENTION_NONE,
 		});
 		return;
