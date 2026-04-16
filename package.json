@@ -8,6 +8,9 @@
     "lint": "eslint . --ignore-pattern 'build/' --fix",
     "lint:fix": "eslint . --ignore-pattern 'build/' --fix",
     "start": "node src/index.js",
+    "check-env": "node src/check-env.js",
+    "env:init": "node scripts/init-env.js",
+    "prestart": "node src/check-env.js",
     "build": "babel src -d build"
   },
   "type": "module",

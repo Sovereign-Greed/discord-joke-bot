@@ -1,16 +1,8 @@
-import { config } from 'dotenv';
 import { Client, GatewayIntentBits } from 'discord.js';
 import axios from 'axios';
+import { getEnv } from './env.js';
 
-// Load environment variables
-config();
-
-const { BOT_TOKEN } = process.env;
-
-if (!BOT_TOKEN) {
-	console.error('Missing BOT_TOKEN! Check your .env file.');
-	process.exit(1);
-}
+const { botToken, applicationId } = getEnv();
 
 // Create a new client instance with the necessary intents
 const client = new Client({
@@ -24,6 +16,12 @@ const client = new Client({
 // When the bot is ready
 client.once('ready', () => {
 	console.log(`Logged in as ${client.user.tag}!`);
+	if (client.user.id !== applicationId) {
+		console.warn(
+			`APPLICATION_ID in .env (${applicationId}) does not match this bot's user ID (${client.user.id}). ` +
+				'Copy the Application ID from the Discord Developer Portal → General Information.',
+		);
+	}
 });
 
 const triggers = [
@@ -136,4 +134,4 @@ client.on('messageCreate', async (message) => {
 });
 
 // Login to Discord
-client.login(BOT_TOKEN);
+client.login(botToken);

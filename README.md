@@ -40,11 +40,16 @@ The Discord.js documentation is your new best friend. It's well-written and a br
    ```bash
    npm install
    ```
-3. Create a .env file and add your bot token:
+3. Create your local `.env` (copy from the template):
    ```bash
-   BOT_TOKEN=your_discord_bot_token_here  
+   npm run env:init
    ```
-4. Start the bot:
+   Then edit `.env` and set **BOT_TOKEN**, **APPLICATION_ID**, and **PUBLIC_KEY** from the [Discord Developer Portal](https://discord.com/developers/applications) → your app → **General Information**.
+4. Confirm variables are present and shaped correctly:
+   ```bash
+   npm run check-env
+   ```
+5. Start the bot (`prestart` runs `check-env` automatically):
    ```bash
    npm start
    ```  
