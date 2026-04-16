@@ -5,6 +5,7 @@ import {
 	CAT_KEYWORD,
 	JOKE_REQUEST_PHRASE,
 } from '../constants/phrases.js';
+import { pickDirectedBotInsultReply } from './pickDirectedBotInsultReply.js';
 import { matchTextTriggerReply } from './matchTextTrigger.js';
 import { fetchCatImageSearch } from './fetchCatImage.js';
 import { fetchRandomSingleJoke } from './fetchJoke.js';
@@ -32,6 +33,12 @@ export async function handleMessageCreate(message) {
 		if (name) {
 			await message.channel.send(`Hello ${name}, I'm joke-bot!`);
 		}
+		return;
+	}
+
+	const insultReply = pickDirectedBotInsultReply(message, normalized);
+	if (insultReply) {
+		await message.channel.send(insultReply);
 		return;
 	}
 

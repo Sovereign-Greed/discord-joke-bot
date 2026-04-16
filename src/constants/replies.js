@@ -18,10 +18,6 @@ const TEXT_TRIGGER_REPLIES = [
 	{ match: 'mary', reply: 'Mary be like: OMG my heart is like so full rn' },
 	{ match: 'jade', reply: 'Jade be like: This furthers my agenda' },
 
-	// Bot attitude (long phrases first in source; final order is by length)
-	{ match: 'shut up joke-bot', reply: 'make me weirdo' },
-	{ match: 'shut up joke bot', reply: 'make me coward, and it\'s joke-bot. get the name right bozo' },
-
 	// One-liners / server bits
 	{ match: 'guess what', reply: 'chicken butt' },
 	{ match: 'apples', reply: 'Well I got her number, how\'d you like them apples' },
