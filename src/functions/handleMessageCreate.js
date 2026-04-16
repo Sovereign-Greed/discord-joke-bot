@@ -5,12 +5,16 @@ import {
 	CAT_KEYWORD,
 	JOKE_REQUEST_PHRASE,
 } from '../constants/phrases.js';
+import { MENTION_NONE } from '../constants/safeMentions.js';
 import { isDirectedAtBot } from './isDirectedAtBot.js';
 import { pickDirectedBotInsultReply } from './pickDirectedBotInsultReply.js';
 import { matchTextTriggerReply } from './matchTextTrigger.js';
 import { parseNameIntro } from './parseNameIntro.js';
+import { hasPhraseSegment, hasWholeWord } from './textMatch.js';
 import { fetchCatImageSearch } from './fetchCatImage.js';
 import { fetchRandomSingleJoke } from './fetchJoke.js';
+
+const sendOpts = { allowedMentions: MENTION_NONE };
 
 /**
  * @param {import('discord.js').Message} message
@@ -24,7 +28,7 @@ export async function handleMessageCreate(message) {
 	const normalized = raw.toLowerCase();
 
 	if (normalized === HELLO_TRIGGER) {
-		await message.channel.send(HELLO_REPLY);
+		await message.channel.send({ content: HELLO_REPLY, ...sendOpts });
 		return;
 	}
 
@@ -32,46 +36,56 @@ export async function handleMessageCreate(message) {
 	const trimmed = normalized.trim();
 	const isGreeting = DIRECTED_GREETING_PREFIXES.some((g) => trimmed === g || trimmed.startsWith(`${g} `));
 	if (isGreeting && isDirectedAtBot(message, normalized)) {
-		await message.channel.send('hi. i’m here. unfortunately for everyone.');
+		await message.channel.send({ content: 'hi. i\'m here. unfortunately for everyone.', ...sendOpts });
 		return;
 	}
 
 	// Name intros before keyword replies so "im jade" stays a dad-joke name bit, not Jade's line.
 	const introName = parseNameIntro(raw);
 	if (introName) {
-		await message.channel.send(`Hello ${introName}, I'm joke-bot!`);
+		await message.channel.send({ content: `Hello ${introName}, I'm joke-bot!`, ...sendOpts });
 		return;
 	}
 
 	const insultReply = pickDirectedBotInsultReply(message, normalized);
 	if (insultReply) {
-		await message.channel.send(insultReply);
+		await message.channel.send({ content: insultReply, ...sendOpts });
 		return;
 	}
 
 	const textReply = matchTextTriggerReply(normalized);
 	if (textReply) {
-		await message.channel.send(textReply);
+		await message.channel.send({ content: textReply, ...sendOpts });
 		return;
 	}
 
-	if (normalized.includes(CAT_KEYWORD)) {
-		const res = await fetchCatImageSearch();
-		const pic = res.data[0]?.url;
-		if (res.status === 200 && pic) {
-			await message.channel.send(pic);
+	if (hasWholeWord(normalized, CAT_KEYWORD)) {
+		try {
+			const res = await fetchCatImageSearch();
+			const pic = res.data[0]?.url;
+			if (res.status === 200 && pic) {
+				await message.channel.send({ content: pic, ...sendOpts });
+			}
+		}
+		catch {
+			await message.channel.send({ content: 'Couldn\'t reach the cat API. Try again in a bit.', ...sendOpts });
 		}
 		return;
 	}
 
-	if (normalized.includes(JOKE_REQUEST_PHRASE)) {
-		const res = await fetchRandomSingleJoke();
-		const joke = res.data?.joke;
-		if (joke) {
-			console.log({ joke });
+	if (hasPhraseSegment(normalized, JOKE_REQUEST_PHRASE)) {
+		try {
+			const res = await fetchRandomSingleJoke();
+			const joke = res.data?.joke;
+			if (joke) {
+				console.log({ joke });
+			}
+			if (res.status === 200 && joke) {
+				await message.channel.send({ content: joke, ...sendOpts });
+			}
 		}
-		if (res.status === 200 && joke) {
-			await message.channel.send(joke);
+		catch {
+			await message.channel.send({ content: 'Couldn\'t reach the joke API. Try again in a bit.', ...sendOpts });
 		}
 	}
 }

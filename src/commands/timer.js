@@ -1,4 +1,6 @@
 import { ChannelType, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import { MENTION_NONE, mentionOnlyUsers } from '../constants/safeMentions.js';
+import { tryConsumeTimerCooldown } from '../functions/timerCooldown.js';
 
 const MAX_SECONDS = 270;
 
@@ -28,7 +30,14 @@ export async function execute(interaction) {
 	const seconds = interaction.options.getInteger('seconds', true);
 
 	if (!interaction.inGuild() || interaction.channel?.type === ChannelType.DM) {
-		await interaction.reply('Timers only work inside a server channel.');
+		await interaction.reply({ content: 'Timers only work inside a server channel.', allowedMentions: MENTION_NONE });
+		return;
+	}
+
+	const guildId = interaction.guildId;
+	const authorId = interaction.user.id;
+	if (!guildId) {
+		await interaction.reply({ content: 'Timers only work inside a server channel.', allowedMentions: MENTION_NONE });
 		return;
 	}
 
@@ -38,26 +47,38 @@ export async function execute(interaction) {
 		await interaction.reply({
 			content: 'Restricted: only admins can use `/timer`.',
 			ephemeral: true,
+			allowedMentions: MENTION_NONE,
+		});
+		return;
+	}
+
+	const cooldown = tryConsumeTimerCooldown(guildId, authorId);
+	if (!cooldown.ok) {
+		const sec = Math.ceil(cooldown.retryAfterMs / 1000);
+		await interaction.reply({
+			content: `Slow down — you can start another timer in **${sec}s**.`,
+			ephemeral: true,
+			allowedMentions: MENTION_NONE,
 		});
 		return;
 	}
 
 	const channel = interaction.channel;
 	if (!channel || !channel.isTextBased()) {
-		await interaction.reply({ content: 'I can’t post timer pings in this channel type.', ephemeral: true });
+		await interaction.reply({ content: 'I can’t post timer pings in this channel type.', ephemeral: true, allowedMentions: MENTION_NONE });
 		return;
 	}
 
 	await interaction.reply({
 		content: `⏱️ Timer started for <@${target.id}>: **${seconds}s**.`,
-		allowedMentions: { users: [target.id] },
+		allowedMentions: mentionOnlyUsers(target.id),
 	});
 
 	setTimeout(async () => {
 		try {
 			await channel.send({
 				content: `⏰ Time’s up, <@${target.id}>!`,
-				allowedMentions: { users: [target.id] },
+				allowedMentions: mentionOnlyUsers(target.id),
 			});
 		}
 		catch (err) {
@@ -65,4 +86,3 @@ export async function execute(interaction) {
 		}
 	}, seconds * 1000);
 }
-

@@ -1,4 +1,5 @@
 import { NAME_INTRO_TRIGGERS } from '../constants/triggers.js';
+import { MAX_INTRO_NAME_LENGTH } from '../constants/limits.js';
 
 const TRIGGER_RE = new RegExp(
 	`^(?:${NAME_INTRO_TRIGGERS.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\s+(.+)$`,
@@ -18,7 +19,13 @@ export function parseNameIntro(raw) {
 		return null;
 	}
 
-	const name = match[1]?.trim();
+	let name = match[1]?.trim() ?? '';
+	name = name.replace(/[<@#&!>]/g, '').replace(/\s+/g, ' ').trim();
+	if (!name) {
+		return null;
+	}
+	if (name.length > MAX_INTRO_NAME_LENGTH) {
+		name = name.slice(0, MAX_INTRO_NAME_LENGTH).trim();
+	}
 	return name || null;
 }
-

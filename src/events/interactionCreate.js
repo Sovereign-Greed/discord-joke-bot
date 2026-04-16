@@ -1,4 +1,5 @@
 import { Events } from 'discord.js';
+import { MENTION_NONE } from '../constants/safeMentions.js';
 import { handleChatInputCommand } from '../commands/index.js';
 
 export default {
@@ -17,7 +18,11 @@ export default {
 		}
 		catch (err) {
 			console.error(err);
-			const payload = { content: 'Something went wrong running that command.', ephemeral: true };
+			const payload = {
+				content: 'Something went wrong running that command.',
+				ephemeral: true,
+				allowedMentions: MENTION_NONE,
+			};
 			if (interaction.replied || interaction.deferred) {
 				await interaction.followUp(payload);
 			}

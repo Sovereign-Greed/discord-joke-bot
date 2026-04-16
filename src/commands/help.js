@@ -1,4 +1,5 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { MENTION_NONE } from '../constants/safeMentions.js';
 
 export const data = new SlashCommandBuilder()
 	.setName('help')
@@ -13,6 +14,7 @@ export async function execute(interaction) {
 		await interaction.reply({
 			content: 'Bot application is not ready yet. Try `/help` again in a few seconds.',
 			ephemeral: true,
+			allowedMentions: MENTION_NONE,
 		});
 		return;
 	}
@@ -32,5 +34,5 @@ export async function execute(interaction) {
 		.setDescription(description)
 		.setFooter({ text: 'Tip: type / and pick a command from the menu.' });
 
-	await interaction.reply({ embeds: [embed] });
+	await interaction.reply({ embeds: [embed], allowedMentions: MENTION_NONE });
 }

@@ -1,4 +1,5 @@
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { MENTION_NONE } from '../constants/safeMentions.js';
 import { NAME_INTRO_TRIGGERS } from '../constants/triggers.js';
 import { DIRECTED_GREETING_PREFIXES, HELLO_TRIGGER, JOKE_REQUEST_PHRASE, CAT_KEYWORD } from '../constants/phrases.js';
 import { TEXT_TRIGGERS } from '../constants/replies.js';
@@ -18,9 +19,9 @@ export async function execute(interaction) {
 		`**Hello**: exact \`${HELLO_TRIGGER}\``,
 		`**Greeting joke-bot**: ${formatInline(DIRECTED_GREETING_PREFIXES)} + (mention or “joke bot”)`,
 		`**Name intro**: ${formatInline(NAME_INTRO_TRIGGERS)} + a name`,
-		`**Joke**: contains \`${JOKE_REQUEST_PHRASE}\``,
-		`**Cat**: contains \`${CAT_KEYWORD}\``,
-		`**Keyword replies**: ${textTriggers.length} triggers (substring match)`,
+		`**Joke**: phrase \`${JOKE_REQUEST_PHRASE}\` (bounded segment)`,
+		`**Cat**: whole word \`${CAT_KEYWORD}\``,
+		`**Keyword replies**: ${textTriggers.length} triggers (single words: whole-word; phrases: substring)`,
 	];
 
 	const embed = new EmbedBuilder()
@@ -33,6 +34,6 @@ export async function execute(interaction) {
 		})
 		.setFooter({ text: 'These are message-based triggers, not slash commands.' });
 
-	await interaction.reply({ embeds: [embed], ephemeral: true });
+	await interaction.reply({ embeds: [embed], ephemeral: true, allowedMentions: MENTION_NONE });
 }
 
