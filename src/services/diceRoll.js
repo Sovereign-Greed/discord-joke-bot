@@ -1,5 +1,8 @@
-import { EmbedBuilder } from 'discord.js';
+import { AttachmentBuilder, EmbedBuilder } from 'discord.js';
 import { getBadRollerName } from '../env.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 export const DICE_DEFINITIONS = Object.freeze([
 	{ name: 'd4', sides: 4 },
@@ -68,8 +71,56 @@ const NAT20_LINES = Object.freeze([
 	'That\'s cinema.',
 ]);
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.join(__dirname, '..', '..');
+
 function randInt(min, max) {
 	return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+/**
+ * Parse dice notation like `2d6+3`, `d20-1`, `4d8`.
+ * @param {string} s
+ * @returns {{ ok: true, dieName: string, count: number, modifier: number } | { ok: false, message: string }}
+ */
+function parseNotation(s) {
+	const raw = String(s ?? '').trim();
+	if (!raw) return { ok: false, message: 'Notation is empty.' };
+
+	const cleaned = raw.replace(/\s+/g, '');
+	const m = /^(\d*)d(\d+)([+-]\d+)?$/i.exec(cleaned);
+	if (!m) {
+		return { ok: false, message: 'Invalid notation. Try `2d6+3`, `d20-1`, or `4d8`.' };
+	}
+
+	const count = m[1] ? Number(m[1]) : 1;
+	const sides = Number(m[2]);
+	const modifier = m[3] ? Number(m[3]) : 0;
+
+	if (!Number.isFinite(count) || count < 1) return { ok: false, message: 'Dice count must be at least 1.' };
+	if (count > 10) return { ok: false, message: 'Dice count max is 10.' };
+	if (!Number.isFinite(sides) || sides < 2) return { ok: false, message: 'Die sides must be at least 2.' };
+	if (!Number.isFinite(modifier) || modifier < -50 || modifier > 50) return { ok: false, message: 'Modifier must be between -50 and 50.' };
+
+	const dieName = `d${sides}`;
+	const die = DICE_DEFINITIONS.find((d) => d.name === dieName);
+	if (!die) {
+		return { ok: false, message: `Unsupported die: ${dieName}. Try one of: ${DICE_DEFINITIONS.map((d) => d.name).join(', ')}.` };
+	}
+
+	return { ok: true, dieName, count, modifier };
+}
+
+/**
+ * Optional roll asset: `assets/roll.png` (user-provided).
+ * If present, attach and use it as embed thumbnail.
+ * @returns {{ files: import('discord.js').AttachmentBuilder[], thumbnailUrl: string } | null}
+ */
+function getRollAsset() {
+	const rollPng = path.join(projectRoot, 'assets', 'roll.png');
+	if (!fs.existsSync(rollPng)) return null;
+	const attachment = new AttachmentBuilder(rollPng, { name: 'roll.png' });
+	return { files: [attachment], thumbnailUrl: 'attachment://roll.png' };
 }
 
 /**
@@ -124,62 +175,89 @@ const FLAVOR_CHANCE = 0.25;
 
 /**
  * @param {{
- *   dieName: string,
- *   count: number,
- *   modifier: number,
- *   advantage: boolean,
- *   disadvantage: boolean,
+ *   notation?: string,
+ *   mode?: 'normal' | 'advantage' | 'disadvantage',
+ *   dieName?: string,
+ *   count?: number,
+ *   modifier?: number,
  * }} input
- * @returns {{ type: 'error', message: string } | { type: 'ok', embed: import('discord.js').EmbedBuilder }}
+ * @returns {{ type: 'error', message: string } | { type: 'ok', embed: import('discord.js').EmbedBuilder, files?: import('discord.js').AttachmentBuilder[] }}
  */
 export function buildRollEmbed(input) {
-	const { dieName, count, modifier, advantage, disadvantage } = input;
+	const mode = input.mode ?? 'normal';
+	const hasNotation = Boolean(input.notation?.trim());
+
+	let dieName = input.dieName ?? 'd20';
+	let count = input.count ?? 1;
+	let modifier = input.modifier ?? 0;
+
+	if (hasNotation) {
+		const parsed = parseNotation(input.notation ?? '');
+		if (!parsed.ok) return { type: 'error', message: parsed.message };
+		dieName = parsed.dieName;
+		count = parsed.count;
+		modifier = parsed.modifier;
+	}
 
 	const die = DICE_DEFINITIONS.find((d) => d.name === dieName);
 	if (!die) {
 		return { type: 'error', message: 'Unknown die.' };
 	}
 
-	if (advantage && disadvantage) {
-		return { type: 'error', message: 'Pick either advantage or disadvantage (not both).' };
+	const advantage = mode === 'advantage';
+	const disadvantage = mode === 'disadvantage';
+
+	/**
+	 * @param {number} n
+	 * @param {number} sides
+	 */
+	function rollPool(n, sides) {
+		const rolls = Array.from({ length: n }, () => randInt(1, sides));
+		const sum = rolls.reduce((s, x) => s + x, 0);
+		return { rolls, sum };
 	}
 
-	if ((advantage || disadvantage) && (die.sides !== 20 || count !== 1)) {
-		return {
-			type: 'error',
-			message: 'Advantage/disadvantage is only supported for **1d20** (set `die=d20` and leave `count` as 1).',
-		};
-	}
-
-	let raw;
 	let rollDetail = '';
+	/** @type {{ rolls: number[], sum: number }} */
+	let chosen;
+	/** @type {{ rolls: number[], sum: number } | null} */
+	let alt = null;
 
-	if (die.sides === 20 && (advantage || disadvantage)) {
-		const a = randInt(1, 20);
-		const b = randInt(1, 20);
-		raw = advantage ? Math.max(a, b) : Math.min(a, b);
+	if (advantage || disadvantage) {
+		const r1 = rollPool(count, die.sides);
+		const r2 = rollPool(count, die.sides);
+		chosen = advantage ? (r1.sum >= r2.sum ? r1 : r2) : (r1.sum <= r2.sum ? r1 : r2);
+		alt = chosen === r1 ? r2 : r1;
 		const tag = advantage ? 'adv' : 'dis';
-		rollDetail = `(${tag}: ${a}, ${b} → **${raw}**)`;
+		if (count === 1) {
+			const a = r1.rolls[0];
+			const b = r2.rolls[0];
+			rollDetail = `(${tag}: ${a}, ${b} → **${chosen.sum}**)`;
+		}
+		else {
+			/** @param {{ rolls: number[], sum: number }} r */
+			const fmt = (r) => `${r.rolls.join(', ')} = ${r.sum}`;
+			rollDetail = `(${tag}: ${fmt(r1)} vs ${fmt(r2)} → **${chosen.sum}**)`;
+		}
 	}
 	else {
-		const rolls = Array.from({ length: count }, () => randInt(1, die.sides));
-		raw = rolls.reduce((s, x) => s + x, 0);
-		rollDetail = count === 1 ? `(**${rolls[0]}**)` : `(${rolls.join(', ')})`;
+		chosen = rollPool(count, die.sides);
+		rollDetail = count === 1 ? `(**${chosen.rolls[0]}**)` : `(${chosen.rolls.join(', ')})`;
 	}
 
-	const total = raw + modifier;
+	const raw = chosen.sum;
+	const total = chosen.sum + modifier;
 	const modText = modifier === 0 ? '' : modifier > 0 ? ` + ${modifier}` : ` - ${Math.abs(modifier)}`;
 	const formula = `${count}d${die.sides}${modText}`;
 
-	const vibeRaw = die.sides === 20 && (advantage || disadvantage) ? raw : (count === 1 ? raw : Math.round(raw / count));
+	/** Average die (or single face) for mood bands on multi-dice pools. */
+	const vibeRaw = count === 1 ? chosen.sum : Math.round(chosen.sum / count);
 	const { category, color } = classifyMood({ sides: die.sides, raw: vibeRaw });
 	const emojis = pickTwoEmojis(moodPool(category));
 
-	const isNat20 = die.sides === 20 && count === 1 && raw === 20;
-	const isNat1 = die.sides === 20 && count === 1 && raw === 1;
+	const isNat20 = die.sides === 20 && count === 1 && chosen.sum === 20;
+	const isNat1 = die.sides === 20 && count === 1 && chosen.sum === 1;
 	const badRollerName = getBadRollerName();
-
-	const headline = `🎲 ${formula} → **${total}**\n${rollDetail}`;
 
 	const extraLines = [];
 
@@ -196,12 +274,46 @@ export function buildRollEmbed(input) {
 		extraLines.push(`*${pickRandom(pool)}*`);
 	}
 
-	const description = [emojis, headline, ...extraLines].filter(Boolean).join('\n\n');
+	const embed = new EmbedBuilder().setTitle(`Result: ${total}`).setColor(color);
 
-	const embed = new EmbedBuilder()
-		.setTitle(`Result: ${total}`)
-		.setColor(color)
-		.setDescription(description);
+	const modeLabel = advantage ? 'Advantage' : disadvantage ? 'Disadvantage' : 'Normal';
+	const modLabel = modifier === 0 ? '0' : modifier > 0 ? `+${modifier}` : `${modifier}`;
+
+	embed.addFields(
+		{ name: 'Roll', value: `${emojis} **${modeLabel}**`, inline: true },
+		{ name: 'Formula', value: `\`${formula}\``, inline: true },
+		{ name: 'Total', value: `**${total}**`, inline: true },
+		{ name: 'Raw', value: `**${raw}**`, inline: true },
+		{ name: 'Modifier', value: `\`${modLabel}\``, inline: true },
+		{ name: 'Die', value: `\`${die.name}\``, inline: true },
+	);
+
+	if (advantage || disadvantage) {
+		/** @param {{ rolls: number[], sum: number }} r */
+		const fmt = (r) => (r.rolls.length === 1 ? `${r.rolls[0]}` : `${r.rolls.join(', ')} = ${r.sum}`);
+		embed.addFields({
+			name: advantage ? 'Advantage roll-off' : 'Disadvantage roll-off',
+			value: `A: \`${fmt(chosen)}\`\nB: \`${alt ? fmt(alt) : '—'}\`\nChosen raw: **${chosen.sum}**`,
+			inline: false,
+		});
+	}
+	else {
+		const breakdown = chosen.rolls.length === 1 ? `\`${chosen.rolls[0]}\`` : `\`${chosen.rolls.join(', ')}\``;
+		embed.addFields({ name: 'Breakdown', value: `${breakdown}`, inline: false });
+	}
+
+	if (rollDetail) {
+		embed.addFields({ name: 'Detail', value: rollDetail, inline: false });
+	}
+	if (extraLines.length) {
+		embed.addFields({ name: 'Extra', value: extraLines.join('\n'), inline: false });
+	}
+
+	const asset = getRollAsset();
+	if (asset) {
+		embed.setThumbnail(asset.thumbnailUrl);
+		return { type: 'ok', embed, files: asset.files };
+	}
 
 	return { type: 'ok', embed };
 }

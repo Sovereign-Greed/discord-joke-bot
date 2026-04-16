@@ -107,7 +107,7 @@ If slash commands never appear in a guild, generate a **new** invite with **`app
 | `/list-triggers` | Everyone (ephemeral) | Summarizes **message** triggers and points at `/cat` / `/joke`. |
 | `/cat` | Everyone | Random cat image (Cat API). |
 | `/joke` | Everyone | Random one-liner (JokeAPI). |
-| `/roll` | Everyone | Roll dice with optional modifier and adv/dis for **d20**. Optional nat-1 jokes if `BAD_ROLLER_NAME` is set (see **Personalization**). |
+| `/roll` | Everyone | Roll dice (supports `notation` like `2d6+3`); **adv/dis** rolls the pool twice and keeps the higher/lower **total**. Optional nat-1 jokes if `BAD_ROLLER_NAME` is set (see **Personalization**). |
 | `/spell` | Everyone | SRD spell lookup ([dnd5eapi.co](https://www.dnd5eapi.co/)) — compact embed + links. |
 | `/monster` | Everyone | SRD monster lookup — compact embed + links. |
 | `/timer` | **Admin** (Administrator permission **or** role named `Admin`) | Starts a timer and pings one user when it ends (per-channel cooldowns apply). |
@@ -146,9 +146,14 @@ These are the main places to customize without rewriting the whole bot:
 
 7. **`/roll` friend who rolls badly** — Set `BAD_ROLLER_NAME` in `.env` (e.g. a friend’s first name). On a **natural 1** on a single **d20**, the bot may add a lighthearted line that uses that name. If `BAD_ROLLER_NAME` is **unset or empty**, those nat-1 lines are **disabled** (no extra text for nat 1). To change the jokes themselves, edit the `NAT1_FRIEND_LINES` array in `src/services/diceRoll.js`: each string can include `{name}` where the env value should appear.
 
-8. **Server integration UI** — In Discord: **Server Settings → Integrations → your bot** to tweak which roles can use which slash commands in that server (overrides are per-guild).
+8. **`/roll` input tips**  
+   - Use `notation` for quick rolls: `2d6+3`, `d20-1`, `4d8`  
+   - Or use `die` + `count` + `modifier`  
+   - Set `mode` to `advantage` / `disadvantage` to roll the whole pool twice and keep the better/worse total.
 
-9. **Fork-only ideas** — Swap API base URLs in `src/constants/endpoints.js`, adjust embed colors in command files, or add new slash commands under `src/commands/` and register them in `src/commands/index.js`, then run **`npm run deploy-commands`** again.
+9. **Server integration UI** — In Discord: **Server Settings → Integrations → your bot** to tweak which roles can use which slash commands in that server (overrides are per-guild).
+
+10. **Fork-only ideas** — Swap API base URLs in `src/constants/endpoints.js`, adjust embed colors in command files, or add new slash commands under `src/commands/` and register them in `src/commands/index.js`, then run **`npm run deploy-commands`** again.
 
 ---
 
