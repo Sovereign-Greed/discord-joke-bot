@@ -1,4 +1,4 @@
-import { ChannelType, SlashCommandBuilder } from 'discord.js';
+import { ChannelType, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 
 const MAX_SECONDS = 270;
 
@@ -29,6 +29,16 @@ export async function execute(interaction) {
 
 	if (!interaction.inGuild() || interaction.channel?.type === ChannelType.DM) {
 		await interaction.reply('Timers only work inside a server channel.');
+		return;
+	}
+
+	const hasAdminPermission = Boolean(interaction.memberPermissions?.has(PermissionFlagsBits.Administrator));
+	const hasAdminRole = Boolean(interaction.member?.roles?.cache?.some((r) => r.name.toLowerCase() === 'admin'));
+	if (!hasAdminPermission && !hasAdminRole) {
+		await interaction.reply({
+			content: 'Restricted: only admins can use `/timer`.',
+			ephemeral: true,
+		});
 		return;
 	}
 
