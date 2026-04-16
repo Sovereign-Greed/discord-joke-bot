@@ -1,6 +1,6 @@
 import { Events } from 'discord.js';
-import { MENTION_NONE } from '../constants/safeMentions.js';
 import { handleChatInputCommand } from '../commands/index.js';
+import { handleSlashCommandError } from '../middleware/interactionError.js';
 
 export default {
 	name: Events.InteractionCreate,
@@ -17,18 +17,7 @@ export default {
 			await handleChatInputCommand(interaction);
 		}
 		catch (err) {
-			console.error(err);
-			const payload = {
-				content: 'Something went wrong running that command.',
-				ephemeral: true,
-				allowedMentions: MENTION_NONE,
-			};
-			if (interaction.replied || interaction.deferred) {
-				await interaction.followUp(payload);
-			}
-			else {
-				await interaction.reply(payload);
-			}
+			await handleSlashCommandError(interaction, err);
 		}
 	},
 };

@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { MENTION_NONE } from '../constants/safeMentions.js';
-import { fetchRandomSingleJoke } from '../functions/fetchJoke.js';
+import { fetchRandomSingleJoke } from '../api/joke.js';
 
 export const data = new SlashCommandBuilder()
 	.setName('joke')

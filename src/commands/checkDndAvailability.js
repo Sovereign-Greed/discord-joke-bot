@@ -2,8 +2,8 @@ import { ChannelType, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { DND_AVAILABILITY_COOLDOWN_MS } from '../constants/limits.js';
 import { MENTION_NONE, mentionOnlyRoles } from '../constants/safeMentions.js';
 import { PLAYERS_ROLE_NAME } from '../constants/roles.js';
-import { tryConsumeCooldown } from '../functions/commandCooldown.js';
-import { isAdminMember } from '../functions/isAdminMember.js';
+import { tryConsumeCooldown } from '../services/commandCooldown.js';
+import { isAdminMember } from '../guards/admin.js';
 
 const REACT_ATTEND = '✅';
 const REACT_CANT = '❌';

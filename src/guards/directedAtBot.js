@@ -21,22 +21,18 @@ export function isDirectedAtBot(message, normalized) {
 		return false;
 	}
 
-	// Clear direct address at the start: "joke bot, ..." / "hey joke-bot ..."
 	if (DIRECT_ADDRESS_PREFIX_RE.test(normalized)) {
 		return true;
 	}
 
-	// Imperative ending patterns: "shut up joke bot"
 	const endsWithAlias = BOT_ALIAS_SUBSTRINGS.some((a) => normalized.trim().endsWith(a));
 	if (endsWithAlias) {
 		return true;
 	}
 
-	// Fallback: require a nearby "you/u/ur/you're" to avoid chiming in on 3rd-person chatter.
 	if (normalized.includes(' you ') || normalized.includes(' u ') || normalized.includes(' ur ') || normalized.includes(' you\'re ') || normalized.includes(' youre ')) {
 		return true;
 	}
 
 	return false;
 }
-

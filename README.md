@@ -6,9 +6,22 @@ A small [discord.js](https://discord.js.org) bot for humor, keyword replies, cat
 
 ## Features
 
-- **Slash commands** — help, jokes, cats, timers, D&D availability polls, and a list of text triggers.
+- **Slash commands** — help, jokes, cats, dice rolls, timers, D&D availability polls, and a list of text triggers.
 - **Message triggers** — keyword replies, directed greetings, name gags, and optional insult clapbacks (with safeguards).
 - **External APIs** — [The Cat API](https://thecatapi.com/) and [JokeAPI](https://v2.jokeapi.dev/).
+
+### Project layout (option B)
+
+| Folder | Purpose |
+|--------|---------|
+| `src/commands/` | Slash command definitions (`data` + `execute`). |
+| `src/events/` | Discord client events (`ready`, `messageCreate`, `interactionCreate`). |
+| `src/handlers/` | Non-slash message pipeline (e.g. keyword replies). |
+| `src/api/` | HTTP client + outbound API calls (axios, timeouts). |
+| `src/services/` | Reusable domain logic (dice, text matching, cooldowns). |
+| `src/guards/` | Permission / “is this message for the bot?” checks. |
+| `src/middleware/` | Cross-cutting slash-command helpers (e.g. centralized error replies). |
+| `src/constants/` | Copy, limits, endpoints, safe mention presets. |
 
 ---
 
@@ -93,6 +106,7 @@ If slash commands never appear in a guild, generate a **new** invite with **`app
 | `/list-triggers` | Everyone (ephemeral) | Summarizes **message** triggers and points at `/cat` / `/joke`. |
 | `/cat` | Everyone | Random cat image (Cat API). |
 | `/joke` | Everyone | Random one-liner (JokeAPI). |
+| `/roll` | Everyone | Roll dice with optional modifier and adv/dis for **d20**. |
 | `/timer` | **Admin** (Administrator permission **or** role named `Admin`) | Starts a timer and pings one user when it ends (per-channel cooldowns apply). |
 | `/check-dnd-availability` | **Admin** (same as above) | Posts an embed + **✅ / ❌** reaction “poll” and pings the **`Players`** role only. |
 
@@ -129,7 +143,7 @@ These are the main places to customize without rewriting the whole bot:
 
 7. **Server integration UI** — In Discord: **Server Settings → Integrations → your bot** to tweak which roles can use which slash commands in that server (overrides are per-guild).
 
-8. **Fork-only ideas** — Swap API URLs in `src/constants/api.js`, adjust embed colors in command files, or add new slash commands under `src/commands/` and register them in `src/commands/index.js`, then run **`npm run deploy-commands`** again.
+8. **Fork-only ideas** — Swap API base URLs in `src/constants/endpoints.js`, adjust embed colors in command files, or add new slash commands under `src/commands/` and register them in `src/commands/index.js`, then run **`npm run deploy-commands`** again.
 
 ---
 

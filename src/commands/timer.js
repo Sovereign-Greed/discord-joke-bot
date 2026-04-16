@@ -1,7 +1,7 @@
 import { ChannelType, SlashCommandBuilder } from 'discord.js';
 import { MENTION_NONE, mentionOnlyUsers } from '../constants/safeMentions.js';
-import { isAdminMember } from '../functions/isAdminMember.js';
-import { tryConsumeTimerCooldown } from '../functions/timerCooldown.js';
+import { isAdminMember } from '../guards/admin.js';
+import { tryConsumeTimerCooldown } from '../services/timerCooldown.js';
 
 const MAX_SECONDS = 270;
 

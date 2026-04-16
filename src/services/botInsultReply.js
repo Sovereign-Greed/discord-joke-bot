@@ -1,5 +1,5 @@
 import { INSULT_SUBSTRINGS, INSULT_WITTY_REPLIES } from '../constants/botInsults.js';
-import { isDirectedAtBot } from './isDirectedAtBot.js';
+import { isDirectedAtBot } from '../guards/directedAtBot.js';
 
 /**
  * @param {import('discord.js').Message} message

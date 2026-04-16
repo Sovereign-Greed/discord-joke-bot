@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { MENTION_NONE } from '../constants/safeMentions.js';
-import { fetchCatImageSearch } from '../functions/fetchCatImage.js';
+import { fetchCatImageSearch } from '../api/cat.js';
 
 export const data = new SlashCommandBuilder()
 	.setName('cat')

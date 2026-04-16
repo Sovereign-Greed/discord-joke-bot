@@ -4,10 +4,10 @@ import {
 	DIRECTED_GREETING_PREFIXES,
 } from '../constants/phrases.js';
 import { MENTION_NONE } from '../constants/safeMentions.js';
-import { isDirectedAtBot } from './isDirectedAtBot.js';
-import { pickDirectedBotInsultReply } from './pickDirectedBotInsultReply.js';
-import { matchTextTriggerReply } from './matchTextTrigger.js';
-import { parseNameIntro } from './parseNameIntro.js';
+import { isDirectedAtBot } from '../guards/directedAtBot.js';
+import { pickDirectedBotInsultReply } from '../services/botInsultReply.js';
+import { matchTextTriggerReply } from '../services/matchTextTrigger.js';
+import { parseNameIntro } from '../services/parseNameIntro.js';
 
 const sendOpts = { allowedMentions: MENTION_NONE };
 
@@ -27,7 +27,6 @@ export async function handleMessageCreate(message) {
 		return;
 	}
 
-	// "Hi joke-bot" style greetings (directed-only).
 	const trimmed = normalized.trim();
 	const isGreeting = DIRECTED_GREETING_PREFIXES.some((g) => trimmed === g || trimmed.startsWith(`${g} `));
 	if (isGreeting && isDirectedAtBot(message, normalized)) {
@@ -35,7 +34,6 @@ export async function handleMessageCreate(message) {
 		return;
 	}
 
-	// Name intros before keyword replies so "im jade" stays a dad-joke name bit, not Jade's line.
 	const introName = parseNameIntro(raw);
 	if (introName) {
 		await message.channel.send({ content: `Hello ${introName}, I'm joke-bot!`, ...sendOpts });
