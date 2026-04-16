@@ -8,6 +8,11 @@
     "lint": "eslint . --ignore-pattern 'build/' --fix",
     "lint:fix": "eslint . --ignore-pattern 'build/' --fix",
     "start": "node src/index.js",
+    "dev": "nodemon",
+    "check-env": "node src/check-env.js",
+    "env:init": "node scripts/init-env.js",
+    "deploy-commands": "node scripts/deploy-commands.js",
+    "prestart": "node src/check-env.js",
     "build": "babel src -d build"
   },
   "type": "module",
@@ -16,7 +21,7 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^1.7.9",
-    "discord.js": "^14.17.3",
+    "discord.js": "^14.26.3",
     "dotenv": "^16.4.7"
   },
   "devDependencies": {
@@ -24,6 +29,7 @@
     "@babel/core": "^7.26.7",
     "@babel/preset-env": "^7.26.7",
     "@eslint/js": "^9.19.0",
-    "eslint": "^9.19.0"
+    "eslint": "^9.19.0",
+    "nodemon": "^3.1.9"
   }
 }
