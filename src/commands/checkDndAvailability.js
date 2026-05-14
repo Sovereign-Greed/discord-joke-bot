@@ -218,11 +218,7 @@ export async function execute(interaction) {
 		unix = getNextSunday7pmEasternUnix();
 		scheduleNote =
 			'**Preset**\n' +
-			'This slot is **next Sunday at 7:00 PM US Eastern** (`America/New_York`; EST or EDT depends on the date).\n\n' +
-			'**Why Eastern is written out**\n' +
-			'The bot does not know each person’s home timezone. Naming **Eastern** is the shared rule so “7 PM” means one agreed instant for the table.\n\n' +
-			'**What the two “When” lines are**\n' +
-			'They are Discord **dynamic timestamps** for the same instant: long form in **each viewer’s Discord timezone**, plus **relative** text (e.g. “in 3 days”) for a quick read.';
+			'This slot is **next Sunday at 7:00 PM US Eastern** (`America/New_York`; EST or EDT depends on the date).' 
 	}
 	else {
 		const sessionDate = interaction.options.getString('session_date');
@@ -246,11 +242,7 @@ export async function execute(interaction) {
 		unix = parsed.unix;
 		scheduleNote =
 			'**Custom time**\n' +
-			'You entered the date and time in **US Eastern** (`America/New_York`; EST or EDT is applied automatically for that date).\n\n' +
-			'**Why Eastern is written out**\n' +
-			'Slash commands cannot read each member’s timezone. We fix the meaning in **one** zone so “8:30 PM” is not ambiguous across the country.\n\n' +
-			'**What the two “When” lines are**\n' +
-			'They are Discord **dynamic timestamps**: everyone sees the **same instant** shown in **their own** Discord client timezone, plus a **relative** line for quick scanning.';
+			'The time selected is in **US Eastern** (`America/New_York`; EST or EDT is applied automatically for that date)'
 	}
 
 	const whenBlock = `**When**\n<t:${unix}:F>\n<t:${unix}:R>`;
