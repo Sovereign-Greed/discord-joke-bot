@@ -36,8 +36,11 @@ function getNextSunday7pmEasternUnix() {
 	return Math.floor(candidate.toSeconds());
 }
 
+const DATE_FORMAT_HELP =
+	'Use **session_date** as **MM-DD-YYYY** with **two digits** for month and day (e.g. **05-14-2026** for May 14, 2026).';
+
 /**
- * @param {string} dateStr YYYY-MM-DD
+ * @param {string} dateStr MM-DD-YYYY (two-digit month and day)
  * @param {number} hour12 1–12
  * @param {number} minute 0, 15, 30, or 45
  * @param {'am' | 'pm'} ampm
@@ -45,23 +48,52 @@ function getNextSunday7pmEasternUnix() {
  */
 function parseCustomEasternUnix(dateStr, hour12, minute, ampm) {
 	const trimmed = dateStr.trim();
-	const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+	const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(trimmed);
 	if (!m) {
-		return { ok: false, error: 'Use **YYYY-MM-DD** for **session_date** (custom mode).' };
+		return {
+			ok: false,
+			error: `**session_date** must match **MM-DD-YYYY** (month-day-year).\n${DATE_FORMAT_HELP}\nWrong shape examples: \`2026-05-14\` (year first), \`5-4-2026\` (missing leading zeros).`,
+		};
 	}
-	const year = Number(m[1]);
-	const month = Number(m[2]);
-	const day = Number(m[3]);
+	const month = Number(m[1]);
+	const day = Number(m[2]);
+	const year = Number(m[3]);
+	if (month < 1 || month > 12) {
+		return {
+			ok: false,
+			error: `**Month** must be **01–12** (first two digits).\n${DATE_FORMAT_HELP}`,
+		};
+	}
+	if (day < 1 || day > 31) {
+		return {
+			ok: false,
+			error: `**Day** must be **01–31** (middle two digits).\n${DATE_FORMAT_HELP}`,
+		};
+	}
+	if (year < 2000 || year > 2100) {
+		return {
+			ok: false,
+			error: '**Year** must be a sensible four-digit year (last four digits), e.g. **2026**.',
+		};
+	}
 	const hour24 = toHour24(hour12, ampm);
 	const dt = DateTime.fromObject(
 		{ year, month, day, hour: hour24, minute, second: 0, millisecond: 0 },
 		{ zone: 'America/New_York' },
 	);
 	if (!dt.isValid) {
-		return { ok: false, error: `Invalid date or time (${dt.invalidExplanation || dt.invalidReason || 'unknown'}).` };
+		return {
+			ok: false,
+			error: `That calendar date is not valid (${dt.invalidExplanation || dt.invalidReason || 'unknown'}).\n${DATE_FORMAT_HELP}`,
+		};
 	}
 	return { ok: true, unix: Math.floor(dt.toSeconds()) };
 }
+
+const HOUR_CHOICES = Array.from({ length: 12 }, (_, i) => {
+	const h = i + 1;
+	return { name: String(h), value: h };
+});
 
 export const data = new SlashCommandBuilder()
 	.setName('check-dnd-availability')
@@ -80,16 +112,15 @@ export const data = new SlashCommandBuilder()
 	.addStringOption((opt) =>
 		opt
 			.setName('session_date')
-			.setDescription('Custom only: date as YYYY-MM-DD (US Eastern)')
+			.setDescription('Custom: date as MM-DD-YYYY (e.g. 05-14-2026), US Eastern')
 			.setRequired(false),
 	)
 	.addIntegerOption((opt) =>
 		opt
 			.setName('hour')
-			.setDescription('Custom only: hour on a 12-hour clock (1–12)')
+			.setDescription('Custom only: hour on a 12-hour clock')
 			.setRequired(false)
-			.setMinValue(1)
-			.setMaxValue(12),
+			.addChoices(...HOUR_CHOICES),
 	)
 	.addIntegerOption((opt) =>
 		opt
@@ -186,7 +217,12 @@ export async function execute(interaction) {
 	if (when === WHEN_PRESET) {
 		unix = getNextSunday7pmEasternUnix();
 		scheduleNote =
-			'_Preset: **next Sunday** at **7:00 PM US Eastern** (EST/EDT). The times below use **your** Discord client timezone._';
+			'**Preset**\n' +
+			'This slot is **next Sunday at 7:00 PM US Eastern** (`America/New_York`; EST or EDT depends on the date).\n\n' +
+			'**Why Eastern is written out**\n' +
+			'The bot does not know each person’s home timezone. Naming **Eastern** is the shared rule so “7 PM” means one agreed instant for the table.\n\n' +
+			'**What the two “When” lines are**\n' +
+			'They are Discord **dynamic timestamps** for the same instant: long form in **each viewer’s Discord timezone**, plus **relative** text (e.g. “in 3 days”) for a quick read.';
 	}
 	else {
 		const sessionDate = interaction.options.getString('session_date');
@@ -197,7 +233,7 @@ export async function execute(interaction) {
 		if (!sessionDate || hour == null || minute == null || !amPm) {
 			await interaction.editReply({
 				content:
-					'For **Custom**, set **session_date** (YYYY-MM-DD), **hour** (1–12), **minute** (:00 / :15 / :30 / :45), and **am_pm** — all interpreted in **US Eastern**.',
+					'For **Custom**, set **session_date** (**MM-DD-YYYY**, e.g. **05-14-2026**), **hour** (pick **1–12**), **minute** (:00 / :15 / :30 / :45), and **am_pm** — all interpreted in **US Eastern**.',
 				allowedMentions: MENTION_NONE,
 			});
 			return;
@@ -209,7 +245,12 @@ export async function execute(interaction) {
 		}
 		unix = parsed.unix;
 		scheduleNote =
-			'_Custom time was entered in **US Eastern** (America/New_York, EST/EDT). The lines below appear in **your** local timezone in Discord._';
+			'**Custom time**\n' +
+			'You entered the date and time in **US Eastern** (`America/New_York`; EST or EDT is applied automatically for that date).\n\n' +
+			'**Why Eastern is written out**\n' +
+			'Slash commands cannot read each member’s timezone. We fix the meaning in **one** zone so “8:30 PM” is not ambiguous across the country.\n\n' +
+			'**What the two “When” lines are**\n' +
+			'They are Discord **dynamic timestamps**: everyone sees the **same instant** shown in **their own** Discord client timezone, plus a **relative** line for quick scanning.';
 	}
 
 	const whenBlock = `**When**\n<t:${unix}:F>\n<t:${unix}:R>`;

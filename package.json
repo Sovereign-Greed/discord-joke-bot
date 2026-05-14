@@ -17,6 +17,7 @@
     "fly:start": "node scripts/run-fly.mjs scale count 1 --max-per-region 1 --app discord-joke-bot --yes",
     "fly:stop": "node scripts/run-fly.mjs scale count 0 --app discord-joke-bot --yes",
     "fly:deploy": "node scripts/run-fly.mjs deploy",
+    "fly:deploy:no-depot": "node scripts/run-fly.mjs deploy --depot=false",
     "fly:machines": "node scripts/run-fly.mjs machine list --app discord-joke-bot",
     "fly:scale-one": "npm run fly:start",
     "start": "node src/index.js",
