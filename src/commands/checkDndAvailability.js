@@ -218,7 +218,7 @@ export async function execute(interaction) {
 		unix = getNextSunday7pmEasternUnix();
 		scheduleNote =
 			'**Preset**\n' +
-			'This slot is **next Sunday at 7:00 PM US Eastern** (`America/New_York`; EST or EDT depends on the date).' 
+			'This slot is **next Sunday at 7:00 PM US Eastern** (`America/New_York`; EST or EDT depends on the date).';
 	}
 	else {
 		const sessionDate = interaction.options.getString('session_date');
@@ -242,7 +242,7 @@ export async function execute(interaction) {
 		unix = parsed.unix;
 		scheduleNote =
 			'**Custom time**\n' +
-			'The time selected is in **US Eastern** (`America/New_York`; EST or EDT is applied automatically for that date)'
+			'The time selected is in **US Eastern** (`America/New_York`; EST or EDT is applied automatically for that date).';
 	}
 
 	const whenBlock = `**When**\n<t:${unix}:F>\n<t:${unix}:R>`;
