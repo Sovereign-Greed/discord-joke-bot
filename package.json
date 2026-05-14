@@ -14,7 +14,11 @@
     "build:docker": "docker build -t discord-joke-bot:local .",
     "build:all": "npm run build && npm run build:docker",
     "build:babel": "babel src -d build",
-    "fly:scale-one": "fly scale count 1 --max-per-region 1",
+    "fly:start": "fly scale count 1 --max-per-region 1 --app discord-joke-bot --yes",
+    "fly:stop": "fly scale count 0 --app discord-joke-bot --yes",
+    "fly:deploy": "fly deploy",
+    "fly:machines": "fly machine list --app discord-joke-bot",
+    "fly:scale-one": "npm run fly:start",
     "start": "node src/index.js",
     "dev": "nodemon",
     "check-env": "node src/check-env.js",
@@ -32,7 +36,8 @@
   "dependencies": {
     "axios": "^1.7.9",
     "discord.js": "^14.26.3",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "luxon": "^3.7.2"
   },
   "devDependencies": {
     "@babel/cli": "^7.26.4",

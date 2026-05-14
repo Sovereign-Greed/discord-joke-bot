@@ -1,4 +1,5 @@
 import { ChannelType, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { DateTime } from 'luxon';
 import { EPHEMERAL } from '../constants/discordFlags.js';
 import { DND_AVAILABILITY_COOLDOWN_MS } from '../constants/limits.js';
 import { MENTION_NONE, mentionOnlyRoles } from '../constants/safeMentions.js';
@@ -9,30 +10,108 @@ import { isAdminMember } from '../guards/admin.js';
 const REACT_ATTEND = '✅';
 const REACT_CANT = '❌';
 
+const WHEN_PRESET = 'next_sunday_7pm_eastern';
+const WHEN_CUSTOM = 'custom';
+
+const EMBED_TITLE = 'D&D availability';
+
+/** @param {number} hour12 @param {'am' | 'pm'} ampm */
+function toHour24(hour12, ampm) {
+	if (ampm === 'am') {
+		return hour12 === 12 ? 0 : hour12;
+	}
+	return hour12 === 12 ? 12 : hour12 + 12;
+}
+
+/** Next Sunday 7:00 PM in America/New_York; if that instant is in the past, the following Sunday. */
+function getNextSunday7pmEasternUnix() {
+	const zone = 'America/New_York';
+	const now = DateTime.now().setZone(zone);
+	const targetDow = 7;
+	const daysUntil = (targetDow - now.weekday + 7) % 7;
+	let candidate = now.plus({ days: daysUntil }).set({ hour: 19, minute: 0, second: 0, millisecond: 0 });
+	if (candidate <= now) {
+		candidate = candidate.plus({ weeks: 1 });
+	}
+	return Math.floor(candidate.toSeconds());
+}
+
+/**
+ * @param {string} dateStr YYYY-MM-DD
+ * @param {number} hour12 1–12
+ * @param {number} minute 0, 15, 30, or 45
+ * @param {'am' | 'pm'} ampm
+ * @returns {{ ok: true, unix: number } | { ok: false, error: string }}
+ */
+function parseCustomEasternUnix(dateStr, hour12, minute, ampm) {
+	const trimmed = dateStr.trim();
+	const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+	if (!m) {
+		return { ok: false, error: 'Use **YYYY-MM-DD** for **session_date** (custom mode).' };
+	}
+	const year = Number(m[1]);
+	const month = Number(m[2]);
+	const day = Number(m[3]);
+	const hour24 = toHour24(hour12, ampm);
+	const dt = DateTime.fromObject(
+		{ year, month, day, hour: hour24, minute, second: 0, millisecond: 0 },
+		{ zone: 'America/New_York' },
+	);
+	if (!dt.isValid) {
+		return { ok: false, error: `Invalid date or time (${dt.invalidExplanation || dt.invalidReason || 'unknown'}).` };
+	}
+	return { ok: true, unix: Math.floor(dt.toSeconds()) };
+}
+
 export const data = new SlashCommandBuilder()
 	.setName('check-dnd-availability')
 	.setDescription('Post a session availability poll (✅/❌) and ping @Players')
 	.setDMPermission(false)
 	.addStringOption((opt) =>
 		opt
-			.setName('title')
-			.setDescription('Poll title (e.g. "Session 12 — The Dragon\'s Vault")')
+			.setName('when')
+			.setDescription('Session date & time (stored as US Eastern; shown per-user in Discord)')
 			.setRequired(true)
-			.setMaxLength(200),
+			.addChoices(
+				{ name: 'Next Sunday — 7:00 PM Eastern (auto)', value: WHEN_PRESET },
+				{ name: 'Custom date & time (Eastern)', value: WHEN_CUSTOM },
+			),
 	)
 	.addStringOption((opt) =>
 		opt
-			.setName('date')
-			.setDescription('When? (e.g. "Sat Apr 18, 7pm EST" or "2026-04-18")')
+			.setName('session_date')
+			.setDescription('Custom only: date as YYYY-MM-DD (US Eastern)')
+			.setRequired(false),
+	)
+	.addIntegerOption((opt) =>
+		opt
+			.setName('hour')
+			.setDescription('Custom only: hour on a 12-hour clock (1–12)')
 			.setRequired(false)
-			.setMaxLength(200),
+			.setMinValue(1)
+			.setMaxValue(12),
+	)
+	.addIntegerOption((opt) =>
+		opt
+			.setName('minute')
+			.setDescription('Custom only')
+			.setRequired(false)
+			.addChoices(
+				{ name: ':00', value: 0 },
+				{ name: ':15', value: 15 },
+				{ name: ':30', value: 30 },
+				{ name: ':45', value: 45 },
+			),
 	)
 	.addStringOption((opt) =>
 		opt
-			.setName('note')
-			.setDescription('Optional extra context (location, level range, etc.)')
+			.setName('am_pm')
+			.setDescription('Custom only: AM or PM')
 			.setRequired(false)
-			.setMaxLength(400),
+			.addChoices(
+				{ name: 'AM', value: 'am' },
+				{ name: 'PM', value: 'pm' },
+			),
 	);
 
 /**
@@ -100,26 +179,47 @@ export async function execute(interaction) {
 		return;
 	}
 
-	const title = interaction.options.getString('title', true);
-	const dateStr = interaction.options.getString('date');
-	const note = interaction.options.getString('note');
+	const when = interaction.options.getString('when', true);
+	let unix;
+	let scheduleNote;
+
+	if (when === WHEN_PRESET) {
+		unix = getNextSunday7pmEasternUnix();
+		scheduleNote =
+			'_Preset: **next Sunday** at **7:00 PM US Eastern** (EST/EDT). The times below use **your** Discord client timezone._';
+	}
+	else {
+		const sessionDate = interaction.options.getString('session_date');
+		const hour = interaction.options.getInteger('hour');
+		const minute = interaction.options.getInteger('minute');
+		/** @type {'am' | 'pm' | null} */
+		const amPm = interaction.options.getString('am_pm');
+		if (!sessionDate || hour == null || minute == null || !amPm) {
+			await interaction.editReply({
+				content:
+					'For **Custom**, set **session_date** (YYYY-MM-DD), **hour** (1–12), **minute** (:00 / :15 / :30 / :45), and **am_pm** — all interpreted in **US Eastern**.',
+				allowedMentions: MENTION_NONE,
+			});
+			return;
+		}
+		const parsed = parseCustomEasternUnix(sessionDate, hour, minute, amPm);
+		if (!parsed.ok) {
+			await interaction.editReply({ content: parsed.error, allowedMentions: MENTION_NONE });
+			return;
+		}
+		unix = parsed.unix;
+		scheduleNote =
+			'_Custom time was entered in **US Eastern** (America/New_York, EST/EDT). The lines below appear in **your** local timezone in Discord._';
+	}
+
+	const whenBlock = `**When**\n<t:${unix}:F>\n<t:${unix}:R>`;
 
 	const embed = new EmbedBuilder()
-		.setTitle(title)
+		.setTitle(EMBED_TITLE)
 		.setColor(0x9B59B6)
+		.setDescription(`${whenBlock}\n\n${scheduleNote}\n\nReact with ${REACT_ATTEND} or ${REACT_CANT} below.`)
 		.setTimestamp()
 		.setFooter({ text: `${REACT_ATTEND} I can attend · ${REACT_CANT} I can't attend` });
-
-	const descParts = [];
-	if (dateStr) {
-		descParts.push(`**When:** ${dateStr}`);
-	}
-	if (note) {
-		descParts.push(`**Details:** ${note}`);
-	}
-	embed.setDescription(
-		descParts.length ? descParts.join('\n\n') : `React with ${REACT_ATTEND} or ${REACT_CANT} below.`,
-	);
 
 	const content = `<@&${playersRole.id}> — **D&D availability**`;
 
@@ -133,7 +233,7 @@ export async function execute(interaction) {
 		await msg.react(REACT_CANT);
 
 		await interaction.editReply({
-			content: `Posted. [Jump to poll](${msg.url})`,
+			content: `Posted for <t:${unix}:f>. [Jump to poll](${msg.url})`,
 			allowedMentions: MENTION_NONE,
 		});
 	}
