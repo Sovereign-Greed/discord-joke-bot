@@ -1,4 +1,5 @@
 import { SlashCommandBuilder } from 'discord.js';
+import { EPHEMERAL } from '../constants/discordFlags.js';
 import { MENTION_NONE } from '../constants/safeMentions.js';
 import { buildRollEmbed, DICE_DEFINITIONS } from '../services/diceRoll.js';
 
@@ -58,7 +59,7 @@ export async function execute(interaction) {
 
 	const result = buildRollEmbed({ notation, mode, dieName, count, modifier });
 	if (result.type === 'error') {
-		await interaction.reply({ content: result.message, ephemeral: true, allowedMentions: MENTION_NONE });
+		await interaction.reply({ content: result.message, flags: EPHEMERAL, allowedMentions: MENTION_NONE });
 		return;
 	}
 

@@ -1,0 +1,30 @@
+# Fly.io — https://fly.io/docs/reference/configuration/
+#
+# Post-deploy (run when the app exists; pins one machine, one per region):
+#   fly scale count 1 --max-per-region 1
+#   fly scale show
+#
+# Release vs main process (see README “Deploy on Fly.io → Logs”):
+#   `release_command` runs in a *separate, short-lived* Machine, then exits. That is
+#   not your bot crashing — the long-running bot is the Machine that runs `CMD` (npm start).
+
+app = "discord-joke-bot"
+primary_region = "iad"
+
+[build]
+	dockerfile = "Dockerfile"
+
+# Registers slash commands before the new release goes live. Remove this block if you
+# only want to run `npm run deploy-commands` from your laptop (saves a release Machine per deploy).
+[deploy]
+	release_command = "node scripts/deploy-commands.js"
+
+[env]
+	NODE_ENV = "production"
+
+# Smallest shared CPU / RAM Fly applies when this block is present; keeps deploys predictable.
+# https://fly.io/docs/reference/configuration/#the-vm-section
+[[vm]]
+	memory = "256mb"
+	cpu_kind = "shared"
+	cpus = 1

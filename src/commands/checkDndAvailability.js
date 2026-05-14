@@ -1,4 +1,6 @@
 import { ChannelType, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { DateTime } from 'luxon';
+import { EPHEMERAL } from '../constants/discordFlags.js';
 import { DND_AVAILABILITY_COOLDOWN_MS } from '../constants/limits.js';
 import { MENTION_NONE, mentionOnlyRoles } from '../constants/safeMentions.js';
 import { PLAYERS_ROLE_NAME } from '../constants/roles.js';
@@ -8,30 +10,139 @@ import { isAdminMember } from '../guards/admin.js';
 const REACT_ATTEND = '✅';
 const REACT_CANT = '❌';
 
+const WHEN_PRESET = 'next_sunday_7pm_eastern';
+const WHEN_CUSTOM = 'custom';
+
+const EMBED_TITLE = 'D&D availability';
+
+/** @param {number} hour12 @param {'am' | 'pm'} ampm */
+function toHour24(hour12, ampm) {
+	if (ampm === 'am') {
+		return hour12 === 12 ? 0 : hour12;
+	}
+	return hour12 === 12 ? 12 : hour12 + 12;
+}
+
+/** Next Sunday 7:00 PM in America/New_York; if that instant is in the past, the following Sunday. */
+function getNextSunday7pmEasternUnix() {
+	const zone = 'America/New_York';
+	const now = DateTime.now().setZone(zone);
+	const targetDow = 7;
+	const daysUntil = (targetDow - now.weekday + 7) % 7;
+	let candidate = now.plus({ days: daysUntil }).set({ hour: 19, minute: 0, second: 0, millisecond: 0 });
+	if (candidate <= now) {
+		candidate = candidate.plus({ weeks: 1 });
+	}
+	return Math.floor(candidate.toSeconds());
+}
+
+const DATE_FORMAT_HELP =
+	'Use **session_date** as **MM-DD-YYYY** with **two digits** for month and day (e.g. **05-14-2026** for May 14, 2026).';
+
+/**
+ * @param {string} dateStr MM-DD-YYYY (two-digit month and day)
+ * @param {number} hour12 1–12
+ * @param {number} minute 0, 15, 30, or 45
+ * @param {'am' | 'pm'} ampm
+ * @returns {{ ok: true, unix: number } | { ok: false, error: string }}
+ */
+function parseCustomEasternUnix(dateStr, hour12, minute, ampm) {
+	const trimmed = dateStr.trim();
+	const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(trimmed);
+	if (!m) {
+		return {
+			ok: false,
+			error: `**session_date** must match **MM-DD-YYYY** (month-day-year).\n${DATE_FORMAT_HELP}\nWrong shape examples: \`2026-05-14\` (year first), \`5-4-2026\` (missing leading zeros).`,
+		};
+	}
+	const month = Number(m[1]);
+	const day = Number(m[2]);
+	const year = Number(m[3]);
+	if (month < 1 || month > 12) {
+		return {
+			ok: false,
+			error: `**Month** must be **01–12** (first two digits).\n${DATE_FORMAT_HELP}`,
+		};
+	}
+	if (day < 1 || day > 31) {
+		return {
+			ok: false,
+			error: `**Day** must be **01–31** (middle two digits).\n${DATE_FORMAT_HELP}`,
+		};
+	}
+	if (year < 2000 || year > 2100) {
+		return {
+			ok: false,
+			error: '**Year** must be a sensible four-digit year (last four digits), e.g. **2026**.',
+		};
+	}
+	const hour24 = toHour24(hour12, ampm);
+	const dt = DateTime.fromObject(
+		{ year, month, day, hour: hour24, minute, second: 0, millisecond: 0 },
+		{ zone: 'America/New_York' },
+	);
+	if (!dt.isValid) {
+		return {
+			ok: false,
+			error: `That calendar date is not valid (${dt.invalidExplanation || dt.invalidReason || 'unknown'}).\n${DATE_FORMAT_HELP}`,
+		};
+	}
+	return { ok: true, unix: Math.floor(dt.toSeconds()) };
+}
+
+const HOUR_CHOICES = Array.from({ length: 12 }, (_, i) => {
+	const h = i + 1;
+	return { name: String(h), value: h };
+});
+
 export const data = new SlashCommandBuilder()
 	.setName('check-dnd-availability')
 	.setDescription('Post a session availability poll (✅/❌) and ping @Players')
 	.setDMPermission(false)
 	.addStringOption((opt) =>
 		opt
-			.setName('title')
-			.setDescription('Poll title (e.g. "Session 12 — The Dragon\'s Vault")')
+			.setName('when')
+			.setDescription('Session date & time (stored as US Eastern; shown per-user in Discord)')
 			.setRequired(true)
-			.setMaxLength(200),
+			.addChoices(
+				{ name: 'Next Sunday — 7:00 PM Eastern (auto)', value: WHEN_PRESET },
+				{ name: 'Custom date & time (Eastern)', value: WHEN_CUSTOM },
+			),
 	)
 	.addStringOption((opt) =>
 		opt
-			.setName('date')
-			.setDescription('When? (e.g. "Sat Apr 18, 7pm EST" or "2026-04-18")')
+			.setName('session_date')
+			.setDescription('Custom: date as MM-DD-YYYY (e.g. 05-14-2026), US Eastern')
+			.setRequired(false),
+	)
+	.addIntegerOption((opt) =>
+		opt
+			.setName('hour')
+			.setDescription('Custom only: hour on a 12-hour clock')
 			.setRequired(false)
-			.setMaxLength(200),
+			.addChoices(...HOUR_CHOICES),
+	)
+	.addIntegerOption((opt) =>
+		opt
+			.setName('minute')
+			.setDescription('Custom only')
+			.setRequired(false)
+			.addChoices(
+				{ name: ':00', value: 0 },
+				{ name: ':15', value: 15 },
+				{ name: ':30', value: 30 },
+				{ name: ':45', value: 45 },
+			),
 	)
 	.addStringOption((opt) =>
 		opt
-			.setName('note')
-			.setDescription('Optional extra context (location, level range, etc.)')
+			.setName('am_pm')
+			.setDescription('Custom only: AM or PM')
 			.setRequired(false)
-			.setMaxLength(400),
+			.addChoices(
+				{ name: 'AM', value: 'am' },
+				{ name: 'PM', value: 'pm' },
+			),
 	);
 
 /**
@@ -41,7 +152,7 @@ export const data = new SlashCommandBuilder()
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 export async function execute(interaction) {
-	await interaction.deferReply({ ephemeral: true });
+	await interaction.deferReply({ flags: EPHEMERAL });
 
 	if (!interaction.inGuild() || interaction.channel?.type === ChannelType.DM) {
 		await interaction.editReply({ content: 'Use this command in a server text channel.', allowedMentions: MENTION_NONE });
@@ -99,26 +210,49 @@ export async function execute(interaction) {
 		return;
 	}
 
-	const title = interaction.options.getString('title', true);
-	const dateStr = interaction.options.getString('date');
-	const note = interaction.options.getString('note');
+	const when = interaction.options.getString('when', true);
+	let unix;
+	let scheduleNote;
+
+	if (when === WHEN_PRESET) {
+		unix = getNextSunday7pmEasternUnix();
+		scheduleNote =
+			'**Preset**\n' +
+			'This slot is **next Sunday at 7:00 PM US Eastern** (`America/New_York`; EST or EDT depends on the date).';
+	}
+	else {
+		const sessionDate = interaction.options.getString('session_date');
+		const hour = interaction.options.getInteger('hour');
+		const minute = interaction.options.getInteger('minute');
+		/** @type {'am' | 'pm' | null} */
+		const amPm = interaction.options.getString('am_pm');
+		if (!sessionDate || hour == null || minute == null || !amPm) {
+			await interaction.editReply({
+				content:
+					'For **Custom**, set **session_date** (**MM-DD-YYYY**, e.g. **05-14-2026**), **hour** (pick **1–12**), **minute** (:00 / :15 / :30 / :45), and **am_pm** — all interpreted in **US Eastern**.',
+				allowedMentions: MENTION_NONE,
+			});
+			return;
+		}
+		const parsed = parseCustomEasternUnix(sessionDate, hour, minute, amPm);
+		if (!parsed.ok) {
+			await interaction.editReply({ content: parsed.error, allowedMentions: MENTION_NONE });
+			return;
+		}
+		unix = parsed.unix;
+		scheduleNote =
+			'**Custom time**\n' +
+			'The time selected is in **US Eastern** (`America/New_York`; EST or EDT is applied automatically for that date).';
+	}
+
+	const whenBlock = `**When**\n<t:${unix}:F>\n<t:${unix}:R>`;
 
 	const embed = new EmbedBuilder()
-		.setTitle(title)
+		.setTitle(EMBED_TITLE)
 		.setColor(0x9B59B6)
+		.setDescription(`${whenBlock}\n\n${scheduleNote}\n\nReact with ${REACT_ATTEND} or ${REACT_CANT} below.`)
 		.setTimestamp()
 		.setFooter({ text: `${REACT_ATTEND} I can attend · ${REACT_CANT} I can't attend` });
-
-	const descParts = [];
-	if (dateStr) {
-		descParts.push(`**When:** ${dateStr}`);
-	}
-	if (note) {
-		descParts.push(`**Details:** ${note}`);
-	}
-	embed.setDescription(
-		descParts.length ? descParts.join('\n\n') : `React with ${REACT_ATTEND} or ${REACT_CANT} below.`,
-	);
 
 	const content = `<@&${playersRole.id}> — **D&D availability**`;
 
@@ -132,7 +266,7 @@ export async function execute(interaction) {
 		await msg.react(REACT_CANT);
 
 		await interaction.editReply({
-			content: `Posted. [Jump to poll](${msg.url})`,
+			content: `Posted for <t:${unix}:f>. [Jump to poll](${msg.url})`,
 			allowedMentions: MENTION_NONE,
 		});
 	}

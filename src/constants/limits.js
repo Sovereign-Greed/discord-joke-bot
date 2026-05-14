@@ -21,3 +21,11 @@ export const DND5E_ENTITY_CACHE_MS = 30 * 60 * 1000;
 
 /** Max characters of rules text shown in the embed (rest via links). */
 export const DND5E_EMBED_DESC_MAX = 420;
+
+/** Per-user slash command bursts (limits CPU under spam / viral traffic). */
+export const SLASH_RATE_WINDOW_MS = 10_000;
+export const SLASH_RATE_MAX_PER_USER = 18;
+
+/** Per-user message-handler work (incoming messages we process per window). */
+export const MESSAGE_HANDLER_RATE_WINDOW_MS = 10_000;
+export const MESSAGE_HANDLER_RATE_MAX_PER_USER = 35;

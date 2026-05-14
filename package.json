@@ -6,14 +6,29 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint . --ignore-pattern 'build/' --fix",
+    "lint:check": "eslint . --ignore-pattern 'build/' --max-warnings 0",
     "lint:fix": "eslint . --ignore-pattern 'build/' --fix",
+    "verify": "npm run lint:check",
+    "verify:docker": "npm run lint:check && docker build -t discord-joke-bot:local .",
+    "build": "npm run lint:check",
+    "build:docker": "docker build -t discord-joke-bot:local .",
+    "build:all": "npm run build && npm run build:docker",
+    "build:babel": "babel src -d build",
+    "fly:start": "node scripts/run-fly.mjs scale count 1 --max-per-region 1 --app discord-joke-bot --yes",
+    "fly:stop": "node scripts/run-fly.mjs scale count 0 --app discord-joke-bot --yes",
+    "fly:deploy": "node scripts/run-fly.mjs deploy",
+    "fly:deploy:no-depot": "node scripts/run-fly.mjs deploy --depot=false",
+    "fly:machines": "node scripts/run-fly.mjs machine list --app discord-joke-bot",
+    "fly:scale-one": "npm run fly:start",
     "start": "node src/index.js",
     "dev": "nodemon",
     "check-env": "node src/check-env.js",
     "env:init": "node scripts/init-env.js",
     "deploy-commands": "node scripts/deploy-commands.js",
-    "prestart": "node src/check-env.js",
-    "build": "babel src -d build"
+    "prestart": "node src/check-env.js"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "type": "module",
   "keywords": [],
@@ -22,7 +37,8 @@
   "dependencies": {
     "axios": "^1.7.9",
     "discord.js": "^14.26.3",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "luxon": "^3.7.2"
   },
   "devDependencies": {
     "@babel/cli": "^7.26.4",

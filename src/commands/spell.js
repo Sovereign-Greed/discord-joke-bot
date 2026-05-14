@@ -1,4 +1,5 @@
 import { SlashCommandBuilder } from 'discord.js';
+import { EPHEMERAL } from '../constants/discordFlags.js';
 import { DND5E_COMMAND_COOLDOWN_MS } from '../constants/limits.js';
 import { MENTION_NONE } from '../constants/safeMentions.js';
 import { fetchSpellByQuery } from '../api/dnd5e.js';
@@ -29,7 +30,7 @@ export async function execute(interaction) {
 		const sec = Math.ceil(cd.retryAfterMs / 1000);
 		await interaction.reply({
 			content: `Slow down — another lookup in **${sec}s** (keeps the public API healthy).`,
-			ephemeral: true,
+			flags: EPHEMERAL,
 			allowedMentions: MENTION_NONE,
 		});
 		return;

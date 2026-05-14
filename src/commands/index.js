@@ -7,6 +7,7 @@ import * as spell from './spell.js';
 import * as monster from './monster.js';
 import * as timer from './timer.js';
 import * as checkDndAvailability from './checkDndAvailability.js';
+import { EPHEMERAL } from '../constants/discordFlags.js';
 import { MENTION_NONE } from '../constants/safeMentions.js';
 
 /** @typedef {{ data: import('discord.js').SlashCommandBuilder, execute: (interaction: import('discord.js').ChatInputCommandInteraction) => Promise<void> }} SlashCommandModule */
@@ -29,7 +30,7 @@ export function getSlashCommandJson() {
 export async function handleChatInputCommand(interaction) {
 	const command = byName.get(interaction.commandName);
 	if (!command) {
-		await interaction.reply({ content: 'Unknown command.', ephemeral: true, allowedMentions: MENTION_NONE });
+		await interaction.reply({ content: 'Unknown command.', flags: EPHEMERAL, allowedMentions: MENTION_NONE });
 		return;
 	}
 	await command.execute(interaction);

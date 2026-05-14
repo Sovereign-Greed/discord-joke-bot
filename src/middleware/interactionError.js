@@ -1,3 +1,4 @@
+import { EPHEMERAL } from '../constants/discordFlags.js';
 import { MENTION_NONE } from '../constants/safeMentions.js';
 
 /**
@@ -10,7 +11,7 @@ export async function handleSlashCommandError(interaction, err) {
 	console.error(err);
 	const payload = {
 		content: 'Something went wrong running that command.',
-		ephemeral: true,
+		flags: EPHEMERAL,
 		allowedMentions: MENTION_NONE,
 	};
 	if (interaction.replied || interaction.deferred) {

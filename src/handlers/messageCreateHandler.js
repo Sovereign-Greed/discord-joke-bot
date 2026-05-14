@@ -3,11 +3,16 @@ import {
 	HELLO_REPLY,
 	DIRECTED_GREETING_PREFIXES,
 } from '../constants/phrases.js';
+import {
+	MESSAGE_HANDLER_RATE_MAX_PER_USER,
+	MESSAGE_HANDLER_RATE_WINDOW_MS,
+} from '../constants/limits.js';
 import { MENTION_NONE } from '../constants/safeMentions.js';
 import { isDirectedAtBot } from '../guards/directedAtBot.js';
 import { pickDirectedBotInsultReply } from '../services/botInsultReply.js';
 import { matchTextTriggerReply } from '../services/matchTextTrigger.js';
 import { parseNameIntro } from '../services/parseNameIntro.js';
+import { allowRateLimit } from '../services/simpleRateLimiter.js';
 
 const sendOpts = { allowedMentions: MENTION_NONE };
 
@@ -16,6 +21,16 @@ const sendOpts = { allowedMentions: MENTION_NONE };
  */
 export async function handleMessageCreate(message) {
 	if (message.author.bot) {
+		return;
+	}
+
+	if (
+		!allowRateLimit(
+			`msg:${message.author.id}`,
+			MESSAGE_HANDLER_RATE_MAX_PER_USER,
+			MESSAGE_HANDLER_RATE_WINDOW_MS,
+		)
+	) {
 		return;
 	}
 
